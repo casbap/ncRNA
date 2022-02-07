@@ -1,0 +1,192 @@
+---
+title: "Yeast Gene Imputation"
+author: "M.Soria"
+date: "19/10/2020"
+output: html_document
+---
+
+</br>
+
+***
+
+##### The following code imputes function on genes from Sacharromyces cerevisiae. 
+
+***
+
+</br>
+
+### Prerequisite libraries
+
+```{r Libraries, echo=TRUE}
+
+suppressPackageStartupMessages({
+    library(R.utils)
+    library(dplyr)
+    library(tidyr)
+    library(data.table)
+    library(RColorBrewer)
+    library(gplots)
+    library(Polychrome)
+    library(tidyverse)
+})
+
+source("functions.R")
+
+```
+
+### Load Pre-requisite RDS files 
+
+```{r , loadrds}
+
+file_logcounts_PASS <- "tmm_agg.rds"
+file_agg <- "agg.rds"
+file_clusters <- "clusters_SandC.rds"
+file_GO <-"GO_table.rds"
+file_GO_allClusters <- "GOterms_allClusters.rds"
+file_corr_allClusters <- "corr_allClusters.rds"
+file_cuttree_totals <- "cuttree_totals.rds"
+file_hr_SandC <- "hr_PASS_SandC.rds"
+
+logcounts <- readRDS(file_logcounts_PASS)
+agg <- readRDS(file_agg)
+clusters <- readRDS(file_clusters)
+GO_table <- readRDS(file_GO)
+GO_allClusters <-  readRDS(file_GO_allClusters)
+corr_allClusters <-  readRDS(file_corr_allClusters)
+cuttree_totals <- readRDS(file_cuttree_totals)
+hr <- readRDS(file_hr_SandC)
+
+```
+
+### 1. Cluster Analysis
+
+```{r, clustering}
+
+# Grouping genes by cluster (using cluster 1)
+cluster1 <- clusters[clusters$ClusterNumber == 1,] 
+cluster1_list <- cluster1$GeneID
+
+# Correlation in Cluster 1  (Function counterpart: corr_per_clust)
+cluster_1 <- logcounts[rownames(logcounts) %in% cluster1_list,]
+corr_cluster1 <- cor(t(cluster_1))
+
+# GO terms for cluster 1 (Function counterpart: GO_per_cl)
+cluster1_GO_terms <- GO_table[GO_table$GeneID %in% cluster1_list,]
+rownames(cluster1_GO_terms) <- cluster1_GO_terms[,1] 
+cluster1_GO_terms[,1] <- c()
+cluster1_GO_terms <- cluster1_GO_terms[,which(colSums(cluster1_GO_terms) > 0)]
+# Order by row names and column names
+cluster1_GO_terms <- cluster1_GO_terms[order(rownames(cluster1_GO_terms)),]
+cluster1_GO_terms <- cluster1_GO_terms[,order(colnames(cluster1_GO_terms))]
+# Genes of interest for cluster 1
+cluster1_GOList <- rownames(cluster1_GO_terms)
+
+# List of GeneIDs in the cluster not present in the GO list
+diff_Cluster1.GO <- setdiff(cluster1_list, cluster1_GOList)
+
+# Use function, wcorr_cluster, to get the weighted values for all blinded genes in cluster 1
+cluster1_wGO <- wcorr_cluster(cluster1_list, corr_cluster1, cluster1_GO_terms)
+
+# Convert output into a data frame with columns as GO terms and rows as gene names
+cluster1_wGO_df <- as.data.frame(do.call(rbind, cluster1_wGO))
+cluster1_wGO_df <- cluster1_wGO_df[order(rownames(cluster1_wGO_df)),]
+cluster1_wGO_df <- cluster1_wGO_df[,order(colnames(cluster1_wGO_df))]
+
+# Check if the GeneIDs with no GO terms have values
+noGOs <- cluster1_wGO_df[diff_Cluster1.GO,]
+
+# set threshold
+Clust1_threshold <- 0.02
+imputed_Clust1_df <- (as.matrix(cluster1_wGO_df) > Clust1_threshold)*1
+# Order by row names and column names
+imputed_Clust1_df <- imputed_Clust1_df[order(rownames(imputed_Clust1_df)),]
+imputed_Clust1_df <- imputed_Clust1_df[,order(colnames(imputed_Clust1_df))]
+
+# Add the GeneIds with no GO terms to the cluster 1 GO terms and set them to zero. This will serve as the input (original) matrix
+newRownames <- noGOs*0
+input_mat <- rbind(cluster1_GO_terms, newRownames)
+input_mat <- input_mat[order(rownames(input_mat)),]
+input_mat <- input_mat[,order(colnames(input_mat))]
+
+# Check if the rownames of the two dfs are the same. Result should be: integer(0)
+which(!rownames(imputed_Clust1_df) == rownames(input_mat))
+which(!colnames(imputed_Clust1_df) == colnames(input_mat))
+
+# Comparison between input df and resultant df
+Clust1_subtract <- imputed_Clust1_df - input_mat
+Clust1_subtract[Clust1_subtract<0] <- 1
+which(Clust1_subtract == -1)
+
+```
+
+### 2. Visualizations
+
+```{r echo=TRUE, fig.width=8, fig.height=8}
+
+par(cex.main = 0.5)
+
+colfunc <- colorRampPalette(c("white", "red"))
+
+# create heatmap for input matrix
+heatmap.2(as.matrix(input_mat), main="S.cerevisiae Cluster 1 GO Terms", scale="none",
+    col = colfunc(25), trace="none", 
+    margins = c(5,5))
+
+# create heatmap for imputed df
+heatmap.2(as.matrix(imputed_Clust1_df), main="S.cerevisiae Cluster 1 Imputed GO Terms", 
+    scale="none", col = colfunc(25), trace="none", 
+    margins = c(5,5))
+
+# create heatmap for subtraction matrix
+heatmap.2(as.matrix(Clust1_subtract), main="S.cerevisiae Cluster 1 GO Terms vs Imputed GO Terms", 
+    scale="none", col = colfunc(25), trace="none", 
+    margins = c(5,5))
+
+```
+
+### 3. Imputation functions
+
+```{r echo=TRUE, fig.width=8, fig.height=8}
+
+# A nested list of gene clusters containing the data generated for cluster analysis. 
+
+wGO_allClusters <- impute(cl_GOall = GO_allClusters, 
+     corr_clAll = corr_allClusters,
+     clust_total = 100, thresh = 0.02)
+
+saveRDS(wGO_allClusters, "wGO_allClusters.rds")
+
+
+# Get the list of GO terms per cluster from the original db (before blinding) to use as a reference for filtering the relevant GO terms per cluster. This also makes sure that dimensions (number of columns) in all of the trials are equal.
+
+GOterms_perCl <- GO_list_perCl(wGO_allClusters, 100)
+
+
+# Save the list of GO terms per cluster
+saveRDS(GOterms_perCl, "GOterms_perCl.rds")
+```
+
+### 4. Optimization of parameters
+
+```{r}
+
+# Different cluster sizes can produced through passing a list 
+# of numbers as denominators of hr$height  
+
+# Determine min-max cut value through trial and error to get 20 to 2000 total clusters
+cuttree_values <- cl_lengthCut(hr=hr, min=1.297, max=3.378, interval=0.001)
+saveRDS(cuttree_values, "cuttree_values.rds")
+
+# Number of gene IDs with no GO IDs
+no_ontologies1 <- setdiff(unique(rownames(agg)),unique(GO_table$GeneID))
+length(no_ontologies1)
+```
+
+
+### Session Information 
+
+```{r Session Info, echo=FALSE}
+
+sessionInfo()
+
+```

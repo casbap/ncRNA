@@ -1,0 +1,366 @@
+---
+title: 'Yeast Data Preparation: Filtering, Aggregation, and Normalisation'
+author: "M.Soria"
+date: "`r Sys.Date()`"
+output:
+  html_document: null
+  toc: yes
+  pdf_document: default
+theme: cosmo
+---
+
+### Introduction
+
+The following code consists of the data preparation steps for the RNA-Seq data for Saccharomyces cerevisiae. The data preparation consists of quality filtering, aggregation, and normalisation.
+
+Clustering of the genes from this counts data for a series of cluster sizes is also performed to be used in the optimasation process.
+
+The GO annotation for yeast is also processed and transformed into a binary matrix for downstream processes.
+
+### Prerequisite libraries
+
+```{r Libraries, echo=TRUE}
+
+suppressPackageStartupMessages({
+    library(R.utils)
+    library(dplyr)
+    library(tidyr)
+    library(data.table)
+    library(RColorBrewer)
+    library(gplots)
+    library(edgeR)
+    library(reshape2)
+    library(Polychrome)
+    library(dendextend)
+    library(ggplot2)
+    library(DESeq2)
+    library(dynamicTreeCut)
+})
+
+source("functions.R")
+
+```
+
+### 1. Download and unzip the Yeast data 
+
+```{r Download Data, echo=TRUE}
+
+# if statement checks if object exists
+
+if (!file.exists("Data/scerevisiae_se.tsv.bz2")){
+    download.file("http://dee2.io/mx/scerevisiae_se.tsv.bz2", 
+              destfile = "Data/scerevisiae_se.tsv.bz2")}
+
+if (!file.exists("Data/scerevisiae_se.tsv")){
+    bunzip2("Data/scerevisiae_se.tsv.bz2", destname="Data/scerevisiae_se.tsv")}
+
+scerevisiae_data <- fread("Data/scerevisiae_se.tsv", sep = '\t', header = FALSE)
+
+head(scerevisiae_data)
+
+```
+
+### 2. Download, read, and unzip the QC data
+
+```{r QC Data, echo=TRUE}
+
+if (!file.exists("Data/scerevisiae_qc.tsv.bz2")){
+    download.file("http://dee2.io/mx/scerevisiae_qc.tsv.bz2", 
+              destfile = "Data/scerevisiae_qc.tsv.bz2")}
+
+quality_data <- fread("Data/scerevisiae_qc.tsv.bz2", sep = '\t', 
+  col.names = c("Database", "Description", "Details"))
+
+head(quality_data)
+
+```
+
+### 3. Filter and quantify databases according to QC_SUMMARY = PASS, WARN, or FAIL.  
+
+```{r QC Data Summary, echo=TRUE}
+
+# Count the total number of QC_SUMMARY entries for checking
+qc_summary <- quality_data[quality_data$Description == 'QC_SUMMARY',]
+total_summary <- nrow(qc_summary)
+
+# Count the total number of databases marked as PASS
+qc_pass <- filter(quality_data, grepl("PASS", Details))
+total_pass <- nrow(qc_pass)
+
+# Count the total number of databases marked as WARN
+qc_warn <- filter(quality_data, grepl("WARN", Details))
+total_warn <- nrow(qc_warn)
+
+# Count the total number of databases marked as FAIL
+qc_fail <- filter(quality_data, grepl("FAIL", Details))
+total_fail <- nrow(qc_fail)
+
+# Summary of counts. Addition of each PASS, WARN, and FAIL counts equals to total_summary.
+quality_summary <- data.frame(total_pass, total_warn, total_fail, total_summary)
+quality_summary
+
+```
+
+### 4. Select all the databses from scerevisiae_se.tsv with QC_SUMMARY == 'PASS' 
+
+```{r Filter yeast bulk data, echo=TRUE}
+
+# Filter all the sample names with QC_SUMMARY == 'PASS' from step 3
+databse_pass <- filter(quality_data, grepl("PASS", Details)) 
+
+# Convert the rows into string and store on a list to use for filtering Yeast data
+databse_pass_list <- as.list(as.character(databse_pass$Database))
+
+# Filter Yeast data using generated list
+scerevisiae_pass <- scerevisiae_data[scerevisiae_data$V1 %in% databse_pass_list,] 
+
+# Convert format from long to wide
+scerevisiae_pass_wide <- scerevisiae_pass %>% pivot_wider(names_from = "V1", values_from = "V3")
+
+# Convert tibble to data frame and assign column 1 as rowname
+scerevisiae_pass_wide <- as.data.frame(scerevisiae_pass_wide)
+rownames(scerevisiae_pass_wide) <- scerevisiae_pass_wide[,1]
+scerevisiae_pass_wide <- scerevisiae_pass_wide[,-1]
+
+scerevisiae_pass_wide[1:10,1:6]
+
+```
+
+### 5. Aggregate multiple runs, if any, (SRR) to its corresponding experiment (SRX) with PASS only databases
+
+```{r SRR to SRX Aggregation, echo=TRUE}
+
+# Download and read Metadata summary
+
+if (!file.exists("Data/scerevisiae_metadata.tsv.cut")){
+    download.file("http://dee2.io/metadata/scerevisiae_metadata.tsv.cut", 
+              destfile = "Data/scerevisiae_metadata.tsv.cut")}
+    
+yeast_metadata <- read.csv("Data/scerevisiae_metadata.tsv.cut", sep = '\t')
+
+# Filter metadata to include only "passed" samples
+yeast_metadata_pass <- yeast_metadata[yeast_metadata$SRR_accession %in% databse_pass_list,]
+
+# Assign column 1 as rownames 
+rownames(yeast_metadata_pass) <- yeast_metadata_pass[,1]
+yeast_metadata_pass <- yeast_metadata_pass[,-1]
+
+# Put the filtered yeast GeneCount data and the filtered metadata dataframes into a list
+yeast_count_metadata <- list(GeneCounts = scerevisiae_pass_wide, MetadataSummary = yeast_metadata_pass)
+
+# Apply both dataframes to the function
+agg <- srx_agg(yeast_count_metadata)
+
+# Remove genes with zero total counts 
+length(which(rowSums(agg) == 0)) # 83
+no_gene_counts <- names(which(rowSums(agg) == 0))
+
+agg <- agg[!(rownames(agg) %in% no_gene_counts),]
+
+# Save agg object
+saveRDS(agg, "agg.rds")
+
+# Histogram showing samples (columns) counts
+hist(colSums(agg), breaks = 20)
+
+```
+
+### 6. Normalisation of Data (with PASS only databases)
+
+```{r echo=TRUE}
+
+# Filtering low counts
+# Check if there are genes with no counts (rowSums==0)
+length(which(rowSums(agg) == 0)) # no rowSums = 0
+
+#NORMALISATION FOR COMPOSITION BIAS (TMM normalisation)
+dgeObj <- DGEList(agg)
+# Apply TMM normalisation to DGEList object
+dgeObj <- calcNormFactors(dgeObj, method = "TMM") 
+tmm_agg <- cpm(dgeObj)
+
+# Scale after normalisation
+tmm_agg_s <- scale(tmm_agg)
+
+# Check distributions of samples
+hist(tmm_agg_s)
+saveRDS(tmm_agg_s,"tmm_agg_s.rds")
+
+# Correlation Matrix
+corr <- cor(t(tmm_agg_s), method = "spearman")
+lt <- corr
+lt[upper.tri(lt,diag=TRUE)] <- NA
+
+lt_melt <- melt(lt, na.rm = TRUE)
+
+png("Data/hist_vds.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+hist(lt, breaks = 20, xlab = "Gene Correlation Values", main = "Spearman Correlation of RNASeq Counts")
+dev.off()
+
+# Check for 0 values
+length(which(lt_melt$value ==0 )) # no zero values
+
+
+```
+
+### 7a. Hierarchical Clustering: linking method
+
+There are different ways of deciding the distance of elements for them to be grouped into a cluster.The correlation between the distance matrix and the cophenetic distance is calculated to to ensure good
+linkage method fit. 
+
+```{r echo=TRUE}
+set.seed(42)
+
+cl <-as.dist(1-cor(t(tmm_agg_s), method="spearman"))
+hr <- hclust(cl , method="complete")
+
+# Check the correlation between the distance 
+# matrix and the cophenetic distance 
+cophenetic.d = cophenetic(hr)
+corr_cophVSdist <- cor(cl, cophenetic.d)
+
+png("Data/dendro_Average.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+dend <- as.dendrogram(hr)
+labels_colors(dend) <- "white"
+plot(dend, main = paste0("Complete Method: Corr = ", signif(corr_cophVSdist)))
+dev.off()
+
+```
+
+### 7b. Heirarchical Clustering: deciding the number of clusters
+A specific number of clusters can be set using the cutree function.
+
+```{r echo=TRUE}
+
+# Using the argument k in cutree is a faster process vs
+# figuring out the cut height
+  mycl <- cutree(hr, k=200)
+  mycl_length <- length(unique(mycl))
+# Cluster size
+  mycl_length
+# This is the base code used in the cl_lengthCut function below
+  clusters <- as.data.frame(mycl)
+  colnames(clusters) <- "ClusterNumber"
+  clusters$GeneID <- rownames(clusters)
+  
+
+```
+
+### 8. Clustering genes using different cluster sizes 
+
+This functions will will yield a list of genes grouped in cluster sized of 50 to 2000 to be used in downstream processes.
+
+```{r eval=FALSE, include=FALSE}
+
+# Different Cluster sizes using the normal dendrogram cutree function
+cuttree_values <- cl_lengthCut(hr=hr, min=50, max=2000, interval=2)
+saveRDS(cuttree_values, "cuttree_values.rds")
+
+# Different Cluster sizes using the dynamic method, cutreeHybrid from the dynamicTreeCut library
+cuttree_values_dynamic <- cl_cut_dynamic(hr=hr, cl=cl, min=4, max=302, interval=2)
+saveRDS(cuttree_values_dynamic, "cuttree_values_dynamic.rds")
+
+```
+
+
+### 9. Heatmaps for the clusters
+
+```{r eval=FALSE, include=FALSE}
+# Visualizations
+if (!exists("P100")){
+  P100 <- createPalette(100,  c("#ff0000", "#00ff00", "#0000ff"))}
+
+clusterCols <- P100[1:100]
+colfunc <- colorRampPalette(c("blue", "white", "red"))
+
+# Heatmaps TMM
+png("Data/hm_TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+myClusterSideBar <- clusterCols[tmm_aggCL_sp[["mycl"]]]
+heatmap.2(corr, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hr),
+          dendrogram="both", scale="col", col = colfunc(25), trace="none",
+          RowSideColors= myClusterSideBar, margins = c(5,5))
+dev.off()
+
+```
+
+### 10. Gene Ontology and Gene Data 
+
+A binary matrix was constructed with the Entrez Gene IDs (NCBI gene IDs) as rownames and GO IDs as the column names (wide format). If a GO ID is associated with a Gene ID, the cell will equal to 1, otherwise it will be zero. 
+
+```{r}
+
+# Get the GO Annotation File (GAF) format 2.1 of yeast
+if (!file.exists("Data/scerevisiae_sgd.gaf.gz")){
+    download.file("http://current.geneontology.org/annotations/sgd.gaf.gz", 
+              destfile = "Data/scerevisiae_sgd.gaf.gz")}
+if (!file.exists("Data/scerevisiae_sgd.gaf")){
+    gunzip("Data/scerevisiae_sgd.gaf.gz", destname="Data/scerevisiae_sgd.gaf")}
+
+scerevisiae_GO <- fread("Data/scerevisiae_sgd.gaf", sep = '\t', header = FALSE)
+
+# Subset unique GeneIDs (V11) and GO IDs (V5) in a dataframe. 
+# Select the first gene synonym from column V11 and delete the rest. 
+# Use this as the GeneID column. 
+# Add another column with 1 in each row indicating the relationship of the Gene ID to the GO ID
+
+scerevisiae_GO_matrix <- data.frame(unique(scerevisiae_GO[,c(11,5)]))
+scerevisiae_GO_matrix$GeneID <- gsub("\\|.*", "", scerevisiae_GO_matrix$V11)
+scerevisiae_GO_matrix$V3 <- as.numeric(paste(1, scerevisiae_GO_matrix$V3))
+scerevisiae_GO_matrix <- scerevisiae_GO_matrix[,-1]
+
+# Convert the dataframe to wide format with Gene ID as column 1 and GO ID as column names 
+scerevisiae_GO_matrix_wide <- scerevisiae_GO_matrix %>% pivot_wider(names_from = "V5", values_from = "V3")
+scerevisiae_GO_matrix_wide <- as.data.frame(scerevisiae_GO_matrix_wide)
+colnames(scerevisiae_GO_matrix_wide)[1] <- "GeneID"
+
+# Convert NA to Zero
+scerevisiae_GO_matrix_wide[is.na(scerevisiae_GO_matrix_wide)] <- 0
+
+# Save the dataframe to an RDS file
+saveRDS(scerevisiae_GO_matrix_wide, "scerevisiae_GO_matrix_wide.rds")
+
+# GeneIDs that are in the gene count data but not in the GO matrix
+diff_Count.GO <- setdiff(rownames(agg), scerevisiae_GO_matrix_wide$GeneID)
+
+# GeneIDs that are in the GO matrix but not in the  gene count data
+diff_GO.Count <- setdiff(scerevisiae_GO_matrix_wide$GeneID, rownames(agg))
+
+# Remove the GeneIDs that are in the GO matrix but not in the gene count data
+IndexRemoved <- which(scerevisiae_GO_matrix_wide$GeneID %in% diff_GO.Count)
+GO_table <- scerevisiae_GO_matrix_wide
+GO_table <- GO_table[-IndexRemoved,]
+# Check if the genes were properly removed 
+diff_GO.Count2 <- setdiff(GO_table$GeneID, rownames(agg))
+dim(diff_GO.Count2)
+
+# Save the new GO table
+saveRDS(GO_table, "GO_table.rds")
+
+```
+
+### 11. Blind GO Terms (90-10 split)
+
+10 per cent of GeneIDs will have zero Gene Ontology Annotations. This will serve as the training data. After the model has been optimised, these IDs will be unblided as the testing data.
+
+```{r echo=TRUE}
+#Fraction of the total number of genes to be blinded
+test_size <- floor(0.10 * nrow(GO_table))
+
+## set the seed to make your partition reproducible
+set.seed(42)
+blinded_ind <- sample(seq_len(nrow(GO_table)), size = test_size)
+GO_train <- GO_table
+GO_train[blinded_ind, 2:ncol(GO_train)] = 0
+
+saveRDS(GO_train, "GO_train.rds")
+
+```
+
+
+### Session Information 
+
+```{r Session Info, echo=FALSE}
+
+sessionInfo()
+
+```
