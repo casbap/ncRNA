@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ### Introduction
-
+set org = the organism you wish to test
 
 ### Prerequisite libraries
 
@@ -38,16 +38,16 @@ source("functions.R")
 
 # if statement checks if object exists
 
-if (!file.exists("Data/hsapiens_se.tsv.bz2")){
-    download.file("http://dee2.io/mx/hsapiens_se.tsv.bz2", 
-              destfile = "Data/hsapiens_se.tsv.bz2")}
+if (!file.exists("Data/hsapiens_rand_se.tsv.bz2")){
+    download.file("http://ziemann-lab.net/public/cas/rand/hsapiens_rand_se.tsv.bz2", 
+              destfile = "Data/hsapiens_rand_se.tsv.bz2")}
 
-if (!file.exists("Data/hsapiens_se.tsv")){
-    bunzip2("Data/hsapiens_se.tsv.bz2", destname="Data/hsapiens_se.tsv")}
+if (!file.exists("Data/hsapiens_rand_se.tsv")){
+    bunzip2("Data/hsapiens_rand_se.tsv.bz2", destname="Data/hsapiens_rand_se.tsv")}
 
-hsapiensData <- fread("Data/hsapiens_se.tsv", sep = '\t', header = FALSE)
+orgData <- fread("Data/hsapiens_rand_se.tsv", sep = '\t', header = FALSE)
 
-head(hsapiensData)
+head(orgData)
 
 ```
 
@@ -55,11 +55,11 @@ head(hsapiensData)
 
 ```{r QC Data, echo=TRUE}
 
-if (!file.exists("Data/hsapiens_qc.tsv.bz2")){
-    download.file("http://dee2.io/mx/hsapiens_qc.tsv.bz2", 
-              destfile = "Data/hsapiens_qc.tsv.bz2")}
+if (!file.exists("hsapiens_rand_qc.tsv.bz2")){
+    download.file("http://ziemann-lab.net/public/cas/rand/hsapiens_rand_qc.tsv.bz2", 
+              destfile = "hsapiens_rand_qc.tsv.bz2")}
 
-qcData <- fread("Data/hsapiens_qc.tsv.bz2", sep = '\t', 
+qcData <- fread("hsapiens_rand_qc.tsv.bz2", sep = '\t', 
   col.names = c("Database", "Description", "Details"))
 
 head(qcData)
@@ -92,28 +92,29 @@ qualitySummary
 
 ```
 
-### 4. Select all the databases from hsapiens_se.tsv with qcSummary == 'PASS' 
+### 4. Select all the databases from org_se.tsv with qcSummary == 'PASS' 
 
-```{r Filter hsapiens bulk data, echo=TRUE}
+```{r Filter org bulk data, echo=TRUE}
 
 # Filter all the sample names with qcSummary == 'PASS' from step 3
 databasePass <- filter(qcData, grepl("PASS", Details)) 
 
-# Convert the rows into string and store on a list to use for filtering hsapiens data
-databasePassList <- as.list(as.character(databasePass$Database))
+# Convert the rows into string and store on a list to use for filtering org data
+databasePassList <- as.character(databasePass$Database)
+str(databasePassList)
 
-# Filter hsapiens data using generated list
-hsapiensPass <- hsapiensData[hsapiensData$V1 %in% databasePassList,] 
+# Filter org data using generated list
+orgPass <- orgData[orgData$V1 %in% databasePassList,] 
 
 # Convert format from long to wide
-hsapiensPassWide <- hsapiensPass %>% pivot_wider(names_from = "V1", values_from = "V3")
+orgPassWide <- orgPass %>% pivot_wider(names_from = "V1", values_from = "V3")
 
 # Convert tibble to data frame and assign column 1 as rowname
-hsapiensPassWide <- as.data.frame(hsapiensPassWide)
-rownames(hsapiensPassWide) <- hsapiensPassWide[,1]
-hsapiensPassWide <- hsapiensPassWide[,-1]
+orgPassWide <- as.data.frame(orgPassWide)
+rownames(orgPassWide) <- orgPassWide[,1]
+orgPassWide <- orgPassWide[,-1]
 
-hsapiensPassWide[1:10,1:6]
+orgPassWide[1:10,1:6]
 
 ```
 
@@ -123,25 +124,25 @@ hsapiensPassWide[1:10,1:6]
 
 # Download and read Metadata summary
 
-if (!file.exists("Data/hsapiensMetadata.tsv.cut")){
-    download.file("http://dee2.io/metadata/hsapiensMetadata.tsv.cut", 
-              destfile = "Data/hsapiensMetadata.tsv.cut")}
+if (!file.exists("hsapiens_metadata.tsv.cut")){
+    download.file("http://ziemann-lab.net/public/cas/rand/hsapiens_metadata.tsv.cut", 
+              destfile = "hsapiens_metadata.tsv.cut")}
     
-hsapiensMetadata <- read.csv("Data/hsapiensMetadata.tsv.cut", sep = '\t')
+orgMetadata <- read.csv("hsapiens_metadata.tsv.cut", sep = '\t')
 
 # Filter metadata to include only "passed" samples
-hsapiensMetadataPass <- hsapiensMetadata[hsapiensMetadata$SRR_accession %in% databasePassList,]
+orgMetadataPass <- orgMetadata[which(orgMetadata$SRR_accession %in% databasePassList),]
 
 # Assign column 1 as rownames 
-rownames(hsapiensMetadataPass) <- hsapiensMetadataPass[,1]
-hsapiensMetadataPass <- hsapiensMetadataPass[,-1]
+rownames(orgMetadataPass) <- orgMetadataPass[,1]
+orgMetadataPass <- orgMetadataPass[,-1]
 
-# Put the filtered hsapiens GeneCount data and the filtered metadata dataframes into a list
-hsapiensCountMetadata <- list(GeneCounts = hsapiensPassWide, MetadataSummary = hsapiensMetadataPass)
+# Put the filtered org GeneCount data and the filtered metadata dataframes into a list
+orgCountMetadata <- list(GeneCounts = orgPassWide, MetadataSummary = orgMetadataPass)
 
 # Apply both dataframes to the function
-head(hsapiensCountMetadata)
-agg <- srx_agg(hsapiensCountMetadata)
+head(orgCountMetadata)
+agg <- srx_agg(orgCountMetadata)
 
 # Remove genes with zero total counts 
 length(which(rowSums(agg) == 0)) # 83
@@ -179,17 +180,18 @@ hist(normAggScale)
 saveRDS(normAggScale,"normAggScale.rds")
 
 # Correlation Matrix
-correlate <- cor(t(normAggScale), method = "spearman")
-correlate[upper.tri(correlate,diag=TRUE)] <- NA
+## memory error - need to fix
+#correlate <- cor(t(normAggScale), method = "spearman")
+#correlate[upper.tri(correlate,diag=TRUE)] <- NA
 
-correlate_melt <- melt(correlate, na.rm = TRUE)
+#correlate_melt <- melt(correlate, na.rm = TRUE)
 
-png("Data/hist_vds.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-hist(correlate, breaks = 20, xlab = "Gene Correlation Values", main = "Spearman Correlation of RNASeq Counts")
-dev.off()
+#png("Data/hist_vds.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+#hist(correlate, breaks = 20, xlab = "Gene Correlation Values", main = "Spearman Correlation of RNASeq Counts")
+#dev.off()
 
 # Check for 0 values
-length(which(correlate_melt$value ==0 )) # no zero values
+#length(which(correlate_melt$value ==0 )) # no zero values
 
 
 ```
@@ -281,45 +283,45 @@ A binary matrix was constructed with the Entrez Gene IDs (NCBI gene IDs) as rown
 
 ```{r}
 
-# Get the GO Annotation File (GAF) format 2.1 of hsapiens
-if (!file.exists("Data/hsapiens_sgd.gaf.gz")){
-    download.file("http://current.geneontology.org/annotations/sgd.gaf.gz", 
-              destfile = "Data/hsapiens_sgd.gaf.gz")}
-if (!file.exists("Data/hsapiens_sgd.gaf")){
-    gunzip("Data/hsapiens_sgd.gaf.gz", destname="Data/hsapiens_sgd.gaf")}
+# Get the GO Annotation File (GAF) format 2.1 of org
+if (!file.exists("Homo_sapiens.GRCh38.ncrna.fa.gz")){
+    download.file("http://ftp.ensembl.org/pub/release-105/fasta/homo_sapiens/ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz", 
+              destfile = "Homo_sapiens.GRCh38.ncrna.fa.gz")}
+if (!file.exists("Homo_sapiens.GRCh38.ncrna.fa.gz")){
+    gunzip("Homo_sapiens.GRCh38.ncrna.fa.gz", destname="omo_sapiens.GRCh38.ncrna.fa.gz")}
 
-hsapiensGO <- fread("Data/hsapiens_sgd.gaf", sep = '\t', header = FALSE)
+orgGO <- fread("Homo_sapiens.GRCh38.ncrna.fa.gz", sep = '\t', header = FALSE)
 
 # Subset unique GeneIDs (V11) and GO IDs (V5) in a dataframe. 
 # Select the first gene synonym from column V11 and delete the rest. 
 # Use this as the GeneID column. 
 # Add another column with 1 in each row indicating the relationship of the Gene ID to the GO ID
 
-hsapiensGOmatrix <- data.frame(unique(hsapiensGO[,c(11,5)]))
-hsapiensGOmatrix$GeneID <- gsub("\\|.*", "", hsapiensGOmatrix$V11)
-hsapiensGOmatrix$V3 <- as.numeric(paste(1, hsapiensGOmatrix$V3))
-hsapiensGOmatrix <- hsapiensGOmatrix[,-1]
+orgGOmatrix <- data.frame(unique(orgGO[,c(11,5)]))
+orgGOmatrix$GeneID <- gsub("\\|.*", "", orgGOmatrix$V11)
+orgGOmatrix$V3 <- as.numeric(paste(1, orgGOmatrix$V3))
+orgGOmatrix <- orgGOmatrix[,-1]
 
 # Convert the dataframe to wide format with Gene ID as column 1 and GO ID as column names 
-hsapiensGOmatrixwide <- hsapiensGOmatrix %>% pivot_wider(names_from = "V5", values_from = "V3")
-hsapiensGOmatrixwide <- as.data.frame(hsapiensGOmatrixwide)
-colnames(hsapiensGOmatrixwide)[1] <- "GeneID"
+orgGOmatrixwide <- orgGOmatrix %>% pivot_wider(names_from = "V5", values_from = "V3")
+orgGOmatrixwide <- as.data.frame(orgGOmatrixwide)
+colnames(orgGOmatrixwide)[1] <- "GeneID"
 
 # Convert NA to Zero
-hsapiensGOmatrixwide[is.na(hsapiensGOmatrixwide)] <- 0
+orgGOmatrixwide[is.na(orgGOmatrixwide)] <- 0
 
 # Save the dataframe to an RDS file
-saveRDS(hsapiensGOmatrixwide, "hsapiensGOmatrixwide.rds")
+saveRDS(orgGOmatrixwide, "orgGOmatrixwide.rds")
 
 # GeneIDs that are in the gene count data but not in the GO matrix
-diffCountGO <- setdiff(rownames(agg), hsapiensGOmatrixwide$GeneID)
+diffCountGO <- setdiff(rownames(agg), orgGOmatrixwide$GeneID)
 
 # GeneIDs that are in the GO matrix but not in the  gene count data
-diffGOCount <- setdiff(hsapiensGOmatrixwide$GeneID, rownames(agg))
+diffGOCount <- setdiff(orgGOmatrixwide$GeneID, rownames(agg))
 
 # Remove the GeneIDs that are in the GO matrix but not in the gene count data
-IndexRemoved <- which(hsapiensGOmatrixwide$GeneID %in% diffGOCount)
-GOtable <- hsapiensGOmatrixwide
+IndexRemoved <- which(orgGOmatrixwide$GeneID %in% diffGOCount)
+GOtable <- orgGOmatrixwide
 GOtable <- GOtable[-IndexRemoved,]
 # Check if the genes were properly removed 
 diffGOCount2 <- setdiff(GOtable$GeneID, rownames(agg))
