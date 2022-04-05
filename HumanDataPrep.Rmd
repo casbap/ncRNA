@@ -208,7 +208,7 @@ distClust <-as.dist(1-cor(t(normAggScale), method="spearman"))
 hClust <- hclust(distClust , method="complete")
 
 # Check the correlation between the distance 
-# matrix and the cophenetic distance 
+# matrix and the cophenetic distance
 cophenetic.d = cophenetic(hClust)
 correlate_distClustVcoph <- cor(distClust, cophenetic.d)
 

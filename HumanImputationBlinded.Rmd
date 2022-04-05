@@ -37,20 +37,20 @@ source("functions.R")
 
 ### Load Pre-requisite RDS files 
 ```{r echo=TRUE}
-file_PASS <- "normAggScale.rds"
-file_GO <-"GO_table.rds"
-file_GO_train <- "GO_train.rds"
+normAggScale <- "normAggScale.rds"
+GO_table <-"GO_table.rds"
+GO_train <- "GO_train.rds"
 #file_cuttree_values <- "cuttree_values_complete.rds"
-file_cuttree_values <- "cuttree_values_dynamic.rds"
+cutClustvalues_dynamic <- "cutClustvalues_dynamic.rds"
 
 # Normalised, aggregated, and scaled RNASeq counts
-normAggScale <- readRDS(file_PASS)
+normAggScale <- readRDS(normAggScale)
 # Binary df for GO annotations 
-GO_table <- readRDS(file_GO)
+GO_table <- readRDS(GO_table)
 # From GO_table, selected randomly as training data
-GO_train <- readRDS(file_GO_train)
+GO_train <- readRDS(GO_train)
 # List of genes grouped in different cluster sizes
-cuttree_values <- readRDS(file_cuttree_values)
+cutClustvalues_dynamic <- readRDS(cutClustvalues_dynamic)
 ```
 
 ### 1. Coarse Sweep for Spearman + complete linkage 
@@ -69,13 +69,13 @@ thresh_list <- c(0.2,0.3,0.4,0.6, 0.8)
 
 start <- Sys.time()
 
-sample_kfold <- optimise_impute(cl_list, thresh_list, cuttree_values, normAggScale, GO_train)
+sample_kfold <- optimise_impute(cl_list, thresh_list, cutClustvalues_dynamic, normAggScale, GO_train)
 
 end <- Sys.time()
 totalTime <- end -start
 totalTime
 
-saveRDS(sample_kfold, "kfold_dynamic_sum1_pt2.rds")
+saveRDS(sample_kfold, "kfold_dynamic_all.rds")
 
 }
 
@@ -88,8 +88,8 @@ saveRDS(sample_kfold, "kfold_dynamic_sum1_pt2.rds")
 dat_list <- lapply(sample_kfold, function(x) x[names(x)!="Index_folds"])
 
 # List the all the mean predicton scores for each parameter 
-summary_all <- summary_Csweep(dat_list)
-saveRDS(summary_all, "kfold_dynamic_summary_sum1.rds")
+kfold_dynamic_sum <- summary_Csweep(dat_list)
+saveRDS(kfold_dynamic_sum, "kfold_dynamic_sum.rds")
 
 ```
 
