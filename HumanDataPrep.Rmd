@@ -37,6 +37,8 @@ source("functions.R")
 ```{r Download Data, echo=TRUE}
 
 # if statement checks if object exists
+if ( !dir.exists("Data")) { dir.create("Data") }
+
 
 if (!file.exists("Data/hsapiens_rand_se.tsv.bz2")){
     download.file("http://ziemann-lab.net/public/cas/rand/hsapiens_rand_se.tsv.bz2", 
@@ -160,7 +162,7 @@ hist(colSums(agg), breaks = 20)
 
 ### 6. Normalisation of Data (with PASS only databases)
 
-```{r echo=TRUE}
+```{r, normalisation, echo=TRUE}
 
 # Filtering low counts
 # Check if there are genes with no counts (rowSums==0)
@@ -193,7 +195,6 @@ saveRDS(normAggScale,"normAggScale.rds")
 # Check for 0 values
 #length(which(correlate_melt$value ==0 )) # no zero values
 
-
 ```
 
 ### 7a. Hierarchical Clustering: linking method
@@ -201,7 +202,8 @@ saveRDS(normAggScale,"normAggScale.rds")
 There are different ways of deciding the distance of elements for them to be grouped into a cluster.The correlation between the distance matrix and the cophenetic distance is calculated to to ensure good
 linkage method fit. 
 
-```{r echo=TRUE}
+```{r, hierarchical_clustering, echo=TRUE}
+
 set.seed(42)
 
 distClust <-as.dist(1-cor(t(normAggScale), method="spearman"))
