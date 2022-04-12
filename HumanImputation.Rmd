@@ -1,0 +1,188 @@
+---
+title: "HumanImputation"
+author: "Cas Baptist"
+date: "4/5/2022"
+output: html_document
+---
+
+</br>
+
+***
+
+##### The following code imputes function on genes from Sacharromyces cerevisiae. 
+
+***
+
+</br>
+
+### Prerequisite libraries
+
+```{r Libraries, echo=TRUE}
+
+suppressPackageStartupMessages({
+    library(R.utils)
+    library(dplyr)
+    library(tidyr)
+    library(data.table)
+    library(RColorBrewer)
+    library(gplots)
+    library(Polychrome)
+    library(tidyverse)
+})
+
+source("functions.R")
+
+```
+
+### Load Pre-requisite RDS files 
+
+```{r , loadrds}
+
+normAgg <- "normAgg.rds"
+agg <- "agg.rds"
+clusterPass <- "clusterPass.rds"
+GO_table <- "GO_table.rds"
+GOallClusters <- "GOallClusters.rds"
+corrAllClusters <- "corrAllClusters.rds"
+
+normAgg <- readRDS(normAgg)
+agg <- readRDS(agg)
+clusterPass <- readRDS(clusterPass)
+GO_table <- readRDS(GO_table)
+GOallClusters <-  readRDS(GOallClusters)
+corrAllClusters <-  readRDS(corrAllClusters)
+
+```
+
+### 1. Cluster Analysis
+
+```{r, clustering}
+
+# Grouping genes by cluster (using cluster 1)
+cluster1 <- clusters[clusters$ClusterNumber == 1,] 
+cluster1_list <- cluster1$GeneID
+
+# Correlation in Cluster 1  (Function counterpart: corrClust)
+cluster_1 <- normAgg[rownames(normAgg) %in% cluster1_list,]
+corrClust1 <- cor(t(cluster_1))
+
+# GO terms for cluster 1 (Function counterpart: GOperClust)
+cluster1GO <- GO_table[GO_table$GeneID %in% cluster1_list,]
+rownames(cluster1GO) <- cluster1GO[,1] 
+cluster1GO[,1] <- c()
+cluster1GO <- cluster1GO[,which(colSums(cluster1GO) > 0)]
+# Order by row names and column names
+cluster1GO <- cluster1GO[order(rownames(cluster1GO)),]
+cluster1GO <- cluster1GO[,order(colnames(cluster1GO))]
+# Genes of interest for cluster 1
+cluster1GO_list <- rownames(cluster1GO)
+
+# List of GeneIDs in the cluster not present in the GO list
+diffClust1GO <- setdiff(cluster1_list, cluster1GO_list)
+
+# Use function, wcorr_cluster, to get the weighted values for all blinded genes in cluster 1
+cluster1wGO <- weightcorrClust(cluster1_list, corrCluster1, cluster1GO)
+
+# Convert output into a data frame with columns as GO terms and rows as gene names
+cluster1wGOdf <- as.data.frame(do.call(rbind, cluster1_wGO))
+cluster1wGOdf <- cluster1wGOdf[order(rownames(cluster1wGOdf)),]
+cluster1wGOdf <- cluster1wGOdf[,order(colnames(cluster1wGOdf))]
+
+# Check if the GeneIDs with no GO terms have values
+noGOs <- cluster1wGOdf[diffClust1GO,]
+
+# set threshold
+Clust1thresh <- 0.02
+impClust1df <- (as.matrix(cluster1wGOdf) > Clust1thresh)*1
+# Order by row names and column names
+impClust1df <- impClust1df[order(rownames(impClust1df)),]
+impClust1df <- impClust1df[,order(colnames(impClust1df))]
+
+# Add the GeneIds with no GO terms to the cluster 1 GO terms and set them to zero. This will serve as the input (original) matrix
+newRownames <- noGOs*0
+input_mat <- rbind(cluster1GO, newRownames)
+input_mat <- input_mat[order(rownames(input_mat)),]
+input_mat <- input_mat[,order(colnames(input_mat))]
+
+# Check if the rownames of the two dfs are the same. Result should be: integer(0)
+which(!rownames(impClust1df) == rownames(input_mat))
+which(!colnames(impClust1df) == colnames(input_mat))
+
+# Comparison between input df and resultant df
+Clust1neg <- impClust1df - input_mat
+Clust1neg[Clust1neg<0] <- 1
+which(Clust1neg == -1)
+
+```
+
+### 2. Visualizations
+
+```{r echo=TRUE, fig.width=8, fig.height=8}
+
+par(cex.main = 0.5)
+
+colfunc <- colorRampPalette(c("white", "red"))
+
+# create heatmap for input matrix
+heatmap.2(as.matrix(input_mat), main="org Cluster 1 GO Terms", scale="none",
+    col = colfunc(25), trace="none", 
+    margins = c(5,5))
+
+# create heatmap for imputed df
+heatmap.2(as.matrix(impClust1df), main="org Cluster 1 Imputed GO Terms", 
+    scale="none", col = colfunc(25), trace="none", 
+    margins = c(5,5))
+
+# create heatmap for subtraction matrix
+heatmap.2(as.matrix(Clust1neg), main="org Cluster 1 GO Terms vs Imputed GO Terms", 
+    scale="none", col = colfunc(25), trace="none", 
+    margins = c(5,5))
+
+```
+
+### 3. Imputation functions
+
+```{r echo=TRUE, fig.width=8, fig.height=8}
+
+# A nested list of gene clusters containing the data generated for cluster analysis. 
+
+weightGOallClusters <- impute(cl_GOall = GOallClusters, 
+     corr_clAll = corrAllClusters,
+     clust_total = 100, thresh = 0.02)
+
+saveRDS(weightGOallClusters, "weightGOallClusters.rds")
+
+
+# Get the list of GO terms per cluster from the original db (before blinding) to use as a reference for filtering the relevant GO terms per cluster. This also makes sure that dimensions (number of columns) in all of the trials are equal.
+
+GOtermsperClust <- GO_list_perCl(weightGOallClusters, 100)
+
+
+# Save the list of GO terms per cluster
+saveRDS(GOtermsperClust, "GOtermsperClust.rds")
+```
+
+### 4. Optimization of parameters
+
+```{r}
+
+# Different cluster sizes can produced through passing a list 
+# of numbers as denominators of hClust$height  
+
+# Determine min-max cut value through trial and error to get 20 to 2000 total clusters
+clusterVal <- cl_lengthCut(hr=hr, min=1.297, max=3.378, interval=0.001)
+saveRDS(clusterVal, "clusterVal.rds")
+
+# Number of gene IDs with no GO IDs
+nullOnt <- setdiff(unique(rownames(agg)),unique(GO_table$GeneID))
+length(nullOnt)
+```
+
+
+### Session Information 
+
+```{r Session Info, echo=FALSE}
+
+sessionInfo()
+
+```
