@@ -1,5 +1,5 @@
 ---
-title: "HumanDataPrep"
+title: "DataPrep"
 author: "Cas Baptist"
 date: "3/7/2022"
 output: html_document
@@ -88,8 +88,6 @@ totalFail <- nrow(qcFail)
 
 # Summary of counts. Addition of each PASS, WARN, and FAIL counts equals to total_summary.
 qualitySummary <- data.frame(totalPass, totalWarn, totalFail, totalSummary)
-
-
 qualitySummary
 
 ```
@@ -104,7 +102,6 @@ databasePass <- filter(qcData, grepl("PASS", Details))
 # Convert the rows into string and store on a list to use for filtering org data
 databasePassList <- as.character(databasePass$Database)
 str(databasePassList)
-remove(databasePass)
 
 # Filter org data using generated list
 orgPass <- orgData[orgData$V1 %in% databasePassList,] 
@@ -118,7 +115,16 @@ rownames(orgPassWide) <- orgPassWide[,1]
 orgPassWide <- orgPassWide[,-1]
 
 orgPassWide[1:10,1:6]
+
+# Remove unneeded data
 remove(orgPass)
+remove(databasePass)
+remove(qcSummary)
+remove(totalSummary)
+remove(qcWarn)
+remove(totalWarn)
+remove(qcFail)
+remove(totalFail)
 
 ```
 
@@ -143,7 +149,6 @@ orgMetadataPass <- orgMetadataPass[,-1]
 
 # Put the filtered org GeneCount data and the filtered metadata dataframes into a list
 orgCountMetadata <- list(GeneCounts = orgPassWide, MetadataSummary = orgMetadataPass)
-remove(orgMetadata)
 
 # Apply both dataframes to the function
 head(orgCountMetadata)
@@ -160,6 +165,9 @@ saveRDS(agg, "agg.rds")
 
 # Histogram showing samples (columns) counts
 hist(colSums(agg), breaks = 20)
+
+# Remove unneeded data
+remove(orgMetadata)
 
 ```
 
@@ -179,7 +187,6 @@ normAgg <- cpm(dgeObj)
 
 # Scale after normalisation
 normAggScale <- scale(normAgg)
-remove(normAgg)
 
 # Check distributions of samples
 hist(normAggScale)
@@ -198,7 +205,6 @@ saveRDS(normAggScale,"normAggScale.rds")
 
 # Check for 0 values
 #length(which(correlate_melt$value ==0 )) # no zero values
-
 
 ```
 
@@ -224,11 +230,15 @@ labels_colors(dend) <- "white"
 plot(dend, main = paste0("Complete Method: Corr = ", signif(correlate_distClustVcoph)))
 dev.off()
 
+```
+
+### 7a.2 Data Removal
+Removes data functions for memory storage
+```{r echo=FALSE}
+
 remove(cophenetic.d)
 remove(correlate_distClustVcoph)
 remove(dend)
-
-remove(orgData)
 
 ```
 
@@ -272,20 +282,20 @@ saveRDS(cutClustvalues_dynamic, "cutClustvalues_dynamic.rds")
 ### 9. Heatmaps for the clusters
 NOT WORKING
 ```{r eval=FALSE, include=FALSE}
-# Visualizations
-if (!exists("P100")){
-  P100 <- createPalette(100,  c("#ff0000", "#00ff00", "#0000ff"))}
-
-clusterCols <- P100[1:100]
-colfunc <- colorRampPalette(c("blue", "white", "red"))
-
-# Heatmaps TMM
-png("Data/hm_TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-cutClustusterSideBar <- clusterCols[normAggCL_sp[["cutClust"]]]
-heatmap.2(corr, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hr),
-          dendrogram="both", scale="col", col = colfunc(25), trace="none",
-          RowSideColors= cutClustusterSideBar, margins = c(5,5))
-dev.off()
+# # Visualizations
+# if (!exists("P100")){
+#   P100 <- createPalette(100,  c("#ff0000", "#00ff00", "#0000ff"))}
+# 
+# clusterCols <- P100[1:100]
+# colfunc <- colorRampPalette(c("blue", "white", "red"))
+# 
+# # Heatmaps TMM
+# png("Data/hm_TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+# cutClustusterSideBar <- clusterCols[normAggCL_sp[["cutClust"]]]
+# heatmap.2(corr, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hr),
+#           dendrogram="both", scale="col", col = colfunc(25), trace="none",
+#           RowSideColors= cutClustusterSideBar, margins = c(5,5))
+# dev.off()
 
 ```
 
@@ -319,8 +329,6 @@ orgGOmatrixwide <- orgGOmatrix %>% pivot_wider(names_from = "V5", values_from = 
 orgGOmatrixwide <- as.data.frame(orgGOmatrixwide)
 colnames(orgGOmatrixwide)[1] <- "GeneID"
 
-remove(orgGOmatrix)
-
 # Convert NA to Zero
 orgGOmatrixwide[is.na(orgGOmatrixwide)] <- 0
 
@@ -344,6 +352,8 @@ dim(diffGOCount2)
 # Save the new GO table
 saveRDS(GOtable, "GOtable.rds")
 
+# Remove unneeded data
+remove(orgGOmatrix)
 
 ```
 
@@ -370,6 +380,12 @@ saveRDS(normAggScale_test, "normAggScale_test.rds")
 
 ```
 
+### 12. Data removal
+
+```{r echo=FALSE}
+remove(orgData)
+
+```
 
 ### Session Information 
 
