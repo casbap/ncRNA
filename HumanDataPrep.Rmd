@@ -88,6 +88,8 @@ totalFail <- nrow(qcFail)
 
 # Summary of counts. Addition of each PASS, WARN, and FAIL counts equals to total_summary.
 qualitySummary <- data.frame(totalPass, totalWarn, totalFail, totalSummary)
+
+
 qualitySummary
 
 ```
@@ -102,6 +104,7 @@ databasePass <- filter(qcData, grepl("PASS", Details))
 # Convert the rows into string and store on a list to use for filtering org data
 databasePassList <- as.character(databasePass$Database)
 str(databasePassList)
+remove(databasePass)
 
 # Filter org data using generated list
 orgPass <- orgData[orgData$V1 %in% databasePassList,] 
@@ -115,6 +118,7 @@ rownames(orgPassWide) <- orgPassWide[,1]
 orgPassWide <- orgPassWide[,-1]
 
 orgPassWide[1:10,1:6]
+remove(orgPass)
 
 ```
 
@@ -139,6 +143,7 @@ orgMetadataPass <- orgMetadataPass[,-1]
 
 # Put the filtered org GeneCount data and the filtered metadata dataframes into a list
 orgCountMetadata <- list(GeneCounts = orgPassWide, MetadataSummary = orgMetadataPass)
+remove(orgMetadata)
 
 # Apply both dataframes to the function
 head(orgCountMetadata)
@@ -174,6 +179,7 @@ normAgg <- cpm(dgeObj)
 
 # Scale after normalisation
 normAggScale <- scale(normAgg)
+remove(normAgg)
 
 # Check distributions of samples
 hist(normAggScale)
@@ -217,6 +223,12 @@ dend <- as.dendrogram(hClust)
 labels_colors(dend) <- "white"
 plot(dend, main = paste0("Complete Method: Corr = ", signif(correlate_distClustVcoph)))
 dev.off()
+
+remove(cophenetic.d)
+remove(correlate_distClustVcoph)
+remove(dend)
+
+remove(orgData)
 
 ```
 
@@ -307,6 +319,8 @@ orgGOmatrixwide <- orgGOmatrix %>% pivot_wider(names_from = "V5", values_from = 
 orgGOmatrixwide <- as.data.frame(orgGOmatrixwide)
 colnames(orgGOmatrixwide)[1] <- "GeneID"
 
+remove(orgGOmatrix)
+
 # Convert NA to Zero
 orgGOmatrixwide[is.na(orgGOmatrixwide)] <- 0
 
@@ -329,6 +343,7 @@ dim(diffGOCount2)
 
 # Save the new GO table
 saveRDS(GOtable, "GOtable.rds")
+
 
 ```
 
