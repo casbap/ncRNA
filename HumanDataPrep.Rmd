@@ -33,6 +33,8 @@ suppressPackageStartupMessages({
     library(ggplot2)
     library(DESeq2)
     library(dynamicTreeCut)
+    library("biomaRt")
+    library("qdapTools")
 })
 
 source("functions.R")
@@ -41,7 +43,7 @@ source("functions.R")
 
 ### 1. Download and unzip the Human data 
 
-```{r Download Data, echo=TRUE}
+```{r, Download Data, echo=TRUE}
 
 # if statement checks if object exists
 if ( !dir.exists("Data")) { dir.create("Data") }
@@ -62,7 +64,7 @@ head(orgData)
 
 ### 2. Download, read, and unzip the QC data
 
-```{r QC Data, echo=TRUE}
+```{r, QC Data, echo=TRUE}
 
 if (!file.exists("hsapiens_rand_qc.tsv.bz2")){
     download.file("http://ziemann-lab.net/public/cas/rand/hsapiens_rand_qc.tsv.bz2", 
@@ -77,7 +79,7 @@ head(qcData)
 
 ### 3. Filter and quantify databases according to qcSummary = PASS, WARN, or FAIL.  
 
-```{r QC Data Summary, echo=TRUE}
+```{r, QC Data Summary, echo=TRUE}
 
 # Count the total number of qcSummary entries for checking
 qcSummary <- qcData[qcData$Description == 'qcSummary',]
@@ -103,7 +105,7 @@ qualitySummary
 
 ### 4. Select all the databases from org_se.tsv with qcSummary == 'PASS' 
 
-```{r Filter org bulk data, echo=TRUE}
+```{r, Filter org bulk data, echo=TRUE}
 
 # Filter all the sample names with qcSummary == 'PASS' from step 3
 databasePass <- filter(qcData, grepl("PASS", Details)) 
@@ -139,7 +141,7 @@ remove(totalFail)
 
 ### 5. Aggregate multiple runs, if any, (SRR) to its corresponding experiment (SRX) with PASS only databases
 
-```{r SRR to SRX Aggregation, echo=TRUE}
+```{r, SRR to SRX Aggregation, echo=TRUE}
 
 # Download and read Metadata summary
 
@@ -236,15 +238,17 @@ correlate_distClustVcoph <- cor(distClust, cophenetic.d)
 
 png("Data/dendro_Average.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
 dend <- as.dendrogram(hClust)
-labels_colors(dend) <- "white"
+#labels_colors(dend) <- "white"
 plot(dend, main = paste0("Complete Method: Corr = ", signif(correlate_distClustVcoph)))
 dev.off()
 
 ```
 
 ### 7a.2 Data Removal
+
 Removes data functions for memory storage
-```{r echo=FALSE}
+
+```{r, data_removal1, echo=FALSE}
 
 remove(cophenetic.d)
 remove(correlate_distClustVcoph)
@@ -255,7 +259,7 @@ remove(dend)
 ### 7b. Heirarchical Clustering: deciding the number of clusters
 A specific number of clusters can be set using the cutree function.
 
-```{r echo=TRUE}
+```{r, heirarchical1, echo=TRUE}
 
 # Using the argument k in cutree is a faster process vs
 # figuring out the cut height
@@ -276,7 +280,7 @@ A specific number of clusters can be set using the cutree function.
 This functions will will yield a list of genes grouped in cluster sized of 50 to 2000 to be used in downstream processes.
 #leave eval=FALSE, code runs with difficulty (requires manual cutHeight addition)
 
-```{r eval=FALSE, include=FALSE}
+```{r, clustering1, eval=FALSE, include=FALSE}
 
 # Different Cluster sizes using the normal dendrogram cutree function
 cutClustvalues <- cl_lengthCut(hClust=hClust, min=50, max=2000, interval=2)
@@ -290,8 +294,11 @@ saveRDS(cutClustvalues_dynamic, "cutClustvalues_dynamic.rds")
 
 
 ### 9. Heatmaps for the clusters
+
 NOT WORKING
-```{r eval=FALSE, include=FALSE}
+
+```{r, heatmaps1, eval=FALSE, include=FALSE}
+
 # # Visualizations
 # if (!exists("P100")){
 #   P100 <- createPalette(100,  c("#ff0000", "#00ff00", "#0000ff"))}
@@ -311,36 +318,32 @@ NOT WORKING
 
 ### 10. Gene Ontology and Gene Data 
 
-A binary matrix was constructed with the Entrez Gene IDs (NCBI gene IDs) as rownames and GO IDs as the column names (wide format). If a GO ID is associated with a Gene ID, the cell will equal to 1, otherwise it will be zero. 
+A binary matrix was constructed with the Entrez Gene IDs (NCBI gene IDs) as rownames and GO
+IDs as the column names (wide format).
+If a GO ID is associated with a Gene ID, the cell will equal to 1, otherwise it will be zero. 
 
-```{r}
+Location for downloads: http://current.geneontology.org/products/pages/downloads.html
 
-# Get the GO Annotation File (GAF) format 2.1 of org
-if (!file.exists("Homo_sapiens.GRCh38.ncrna.fa.gz")){
-    download.file("http://ftp.ensembl.org/pub/release-105/fasta/homo_sapiens/ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz", 
-              destfile = "Homo_sapiens.GRCh38.ncrna.fa.gz")}
-if (!file.exists("Homo_sapiens.GRCh38.ncrna.fa.gz")){
-    gunzip("Homo_sapiens.GRCh38.ncrna.fa.gz", destname="omo_sapiens.GRCh38.ncrna.fa.gz")}
+That database is a bit shit because it doesn't use the ENS gene identfier.
 
-orgGO <- fread("Homo_sapiens.GRCh38.ncrna.fa.gz", sep = '\t', header = FALSE)
+Will investigate using Ensembl BioMart.
 
-# Subset unique GeneIDs (V11) and GO IDs (V5) in a dataframe. 
-# Select the first gene synonym from column V11 and delete the rest. 
-# Use this as the GeneID column. 
-# Add another column with 1 in each row indicating the relationship of the Gene ID to the GO ID
+```{r, gene_ontol1}
 
-orgGOmatrix <- data.frame(unique(orgGO[,c(11,5)]))
-orgGOmatrix$GeneID <- gsub("\\|.*", "", orgGOmatrix$V11)
-orgGOmatrix$V3 <- as.numeric(paste(1, orgGOmatrix$V3))
-orgGOmatrix <- orgGOmatrix[,-1]
+# biomart
+ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
 
-# Convert the dataframe to wide format with Gene ID as column 1 and GO ID as column names 
-orgGOmatrixwide <- orgGOmatrix %>% pivot_wider(names_from = "V5", values_from = "V3")
-orgGOmatrixwide <- as.data.frame(orgGOmatrixwide)
-colnames(orgGOmatrixwide)[1] <- "GeneID"
+orgGOlong <- getBM(
+  attributes=c("ensembl_gene_id","go_id","goslim_goa_accession"), 
+  mart = ensembl)
 
-# Convert NA to Zero
-orgGOmatrixwide[is.na(orgGOmatrixwide)] <- 0
+orgGOlong <- orgGOlong[which(orgGOlong$go_id !="" ),]
+
+# GO presence absence matrix
+# gene ids in first column
+# each row represents a gene (ENSG ID)
+# each column represents a GO term eg GO:000002
+orgGOmatrixwide <- cbind(orgGOlong[1], mtabulate(as.data.frame(t(orgGOlong[-1]))))
 
 # Save the dataframe to an RDS file
 saveRDS(orgGOmatrixwide, "orgGOmatrixwide.rds")
@@ -369,9 +372,11 @@ remove(orgGOmatrix)
 
 ### 11. Blind GO Terms (90-10 split)
 
-10 per cent of GeneIDs will have zero Gene Ontology Annotations. This will serve as the training data. After the model has been optimised, these IDs will be unblided as the testing data.
+10 per cent of GeneIDs will have zero Gene Ontology Annotations. This will serve as the training data.
+After the model has been optimised, these IDs will be unblided as the testing data.
 
-```{r echo=TRUE}
+```{r, blind_terms, echo=TRUE}
+
 #Fraction of the total number of genes to be blinded
 test_size <- floor(0.10 * nrow(GOtable))
 
@@ -392,7 +397,8 @@ saveRDS(normAggScale_test, "normAggScale_test.rds")
 
 ### 12. Data removal
 
-```{r echo=FALSE}
+```{r, data_removal2, echo=FALSE}
+
 remove(orgData)
 
 ```
