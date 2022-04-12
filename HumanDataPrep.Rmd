@@ -1,5 +1,5 @@
 ---
-title: "HumanDataPrep"
+title: "DataPrep"
 author: "Cas Baptist"
 date: "3/7/2022"
 output: html_document
@@ -118,6 +118,16 @@ orgPassWide <- orgPassWide[,-1]
 
 orgPassWide[1:10,1:6]
 
+# Remove unneeded data
+remove(orgPass)
+remove(databasePass)
+remove(qcSummary)
+remove(totalSummary)
+remove(qcWarn)
+remove(totalWarn)
+remove(qcFail)
+remove(totalFail)
+
 ```
 
 ### 5. Aggregate multiple runs, if any, (SRR) to its corresponding experiment (SRX) with PASS only databases
@@ -157,6 +167,9 @@ saveRDS(agg, "agg.rds")
 
 # Histogram showing samples (columns) counts
 hist(colSums(agg), breaks = 20)
+
+# Remove unneeded data
+remove(orgMetadata)
 
 ```
 
@@ -222,6 +235,16 @@ dev.off()
 
 ```
 
+### 7a.2 Data Removal
+Removes data functions for memory storage
+```{r echo=FALSE}
+
+remove(cophenetic.d)
+remove(correlate_distClustVcoph)
+remove(dend)
+
+```
+
 ### 7b. Heirarchical Clustering: deciding the number of clusters
 A specific number of clusters can be set using the cutree function.
 
@@ -262,20 +285,20 @@ saveRDS(cutClustvalues_dynamic, "cutClustvalues_dynamic.rds")
 ### 9. Heatmaps for the clusters
 NOT WORKING
 ```{r eval=FALSE, include=FALSE}
-# Visualizations
-if (!exists("P100")){
-  P100 <- createPalette(100,  c("#ff0000", "#00ff00", "#0000ff"))}
-
-clusterCols <- P100[1:100]
-colfunc <- colorRampPalette(c("blue", "white", "red"))
-
-# Heatmaps TMM
-png("Data/hm_TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-cutClustusterSideBar <- clusterCols[normAggCL_sp[["cutClust"]]]
-heatmap.2(corr, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hr),
-          dendrogram="both", scale="col", col = colfunc(25), trace="none",
-          RowSideColors= cutClustusterSideBar, margins = c(5,5))
-dev.off()
+# # Visualizations
+# if (!exists("P100")){
+#   P100 <- createPalette(100,  c("#ff0000", "#00ff00", "#0000ff"))}
+# 
+# clusterCols <- P100[1:100]
+# colfunc <- colorRampPalette(c("blue", "white", "red"))
+# 
+# # Heatmaps TMM
+# png("Data/hm_TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+# cutClustusterSideBar <- clusterCols[normAggCL_sp[["cutClust"]]]
+# heatmap.2(corr, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hr),
+#           dendrogram="both", scale="col", col = colfunc(25), trace="none",
+#           RowSideColors= cutClustusterSideBar, margins = c(5,5))
+# dev.off()
 
 ```
 
@@ -332,6 +355,9 @@ dim(diffGOCount2)
 # Save the new GO table
 saveRDS(GOtable, "GOtable.rds")
 
+# Remove unneeded data
+remove(orgGOmatrix)
+
 ```
 
 ### 11. Blind GO Terms (90-10 split)
@@ -357,6 +383,12 @@ saveRDS(normAggScale_test, "normAggScale_test.rds")
 
 ```
 
+### 12. Data removal
+
+```{r echo=FALSE}
+remove(orgData)
+
+```
 
 ### Session Information 
 

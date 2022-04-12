@@ -1,0 +1,73 @@
+---
+title: "Clusters"
+author: "Cas Baptist"
+date: "4/6/2022"
+output: html_document
+---
+
+***
+
+##### The following code consists of the data preparation steps for the RNA-Seq data for Saccharomyces cerevisiae. The data preparation consists of quality filtering, aggregation, and normalisation.
+
+***
+
+</br>
+
+
+### Prerequisite libraries
+```{r Libraries, echo=TRUE}
+suppressPackageStartupMessages({c(library(R.utils), library(dplyr), library(tidyr), library(data.table), library(RColorBrewer), library(Polychrome), library(gplots), library(edgeR))})
+```
+</br>
+
+### 1. Heirarchical Clustering with PASS only databases
+```{r echo=TRUE}
+# This chunk can be reused for the PASS + Warn or the WARN filters by changing the content of the filename object. Do not forget to change the name of the variable where you will save the clusters for different inputs. 
+
+# Save the logcounts_PASS.rds object from the data preparation step (orgDataPrep.Rmd)
+normAgg <- "normAgg.rds"
+# Read the logcounts_PASS.rds object and use it in the code
+logcounts <- readRDS(normAgg)
+
+# Hierarchical Clustering
+distClust <-as.dist(1-cor(t(logcounts), method="spearman"))
+hClust <- hclust(distClust , method="complete")
+
+# optimizing the cluster size
+clusterPass <- cutree(hClust, h=max(hr$height/1.64))
+# Save the clusters value 
+saveRDS(clusterPass, "clusterPass.rds")
+# Check the number of clusters. Can be adjusted by changing the h=max denominator
+clusterPasslength <- length(unique(clusterPass))
+
+```
+
+### 2. Visualisations
+NOT FUNCTIONING CURRENTLY
+```{r echo=TRUE}
+
+# if (!exists("P100")){
+#   P100 <- createPalette(100,  c("#ff0000", "#00ff00", "#0000ff"))}
+# 
+# clusterCols <- P100[1:clusterPasslength]
+# myClusterSideBar <- clusterCols[clusterPass]
+# colfunc <- colorRampPalette(c("blue", "white", "red"))
+# if (!file.exists("Data/scerevisiae_se.tsv")){
+#   write.table(mycl,file="Data/scerevisiae_pass.txt",quote=F,sep="\t")}
+# 
+# # create a 5 x 5 inch png image
+# png("Data/yeast_heatmaps_PASS_normalization3.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)          
+# 
+# # create the heatmap
+# heatmap.2(logcounts, main="S.cerevisiae PASS Samples",  Rowv=as.dendrogram(hClust),
+#           dendrogram="both", scale="column", col = colfunc(25), trace="none", 
+#           RowSideColors= myClusterSideBar, margins = c(5,5))
+# 
+# dev.off()
+```
+</br>
+
+### Session Information 
+```{r Session Info, echo=FALSE}
+sessionInfo()
+```
