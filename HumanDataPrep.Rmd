@@ -6,7 +6,14 @@ output: html_document
 ---
 
 ### Introduction
+
 set org = the organism you wish to test
+
+The heirarchical clustering step needs a larger stack. Run this before executing:
+
+`
+ulimit -s 65533
+`
 
 ### Prerequisite libraries
 
@@ -387,6 +394,14 @@ saveRDS(normAggScale_test, "normAggScale_test.rds")
 
 ```{r echo=FALSE}
 remove(orgData)
+
+```
+
+### Mem usage
+
+```{r,memusage}
+
+sort( sapply( ls() , function(x) { object.size( get( x ) ) }  )  )
 
 ```
 
