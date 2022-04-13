@@ -334,7 +334,7 @@ Will investigate using Ensembl BioMart.
 ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
 
 orgGOlong <- getBM(
-  attributes=c("ensembl_gene_id","go_id","goslim_goa_accession"), 
+  attributes=c("ensembl_gene_id","go_id"), 
   mart = ensembl)
 
 orgGOlong <- orgGOlong[which(orgGOlong$go_id !="" ),]
