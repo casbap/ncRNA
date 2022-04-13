@@ -257,37 +257,41 @@ remove(dend)
 ```
 
 ### 7b. Heirarchical Clustering: deciding the number of clusters
+
 A specific number of clusters can be set using the cutree function.
 
 ```{r, heirarchical1, echo=TRUE}
 
 # Using the argument k in cutree is a faster process vs
 # figuring out the cut height
-  cutClust <- cutree(hClust, k=200)
-  cutClustlength <- length(unique(cutClust))
+cutClust <- cutree(hClust, k=200)
+cutClustlength <- length(unique(cutClust))
+
 # Cluster size
-  cutClustlength
+cutClustlength
 # This is the base code used in the cl_lengthCut function below
-  clusters <- as.data.frame(cutClust)
-  colnames(clusters) <- "ClusterNumber"
-  clusters$GeneID <- rownames(clusters)
+clusters <- as.data.frame(cutClust)
+colnames(clusters) <- "ClusterNumber"
+clusters$GeneID <- rownames(clusters)
   
 
 ```
 
 ### 8. Clustering genes using different cluster sizes 
 
-This functions will will yield a list of genes grouped in cluster sized of 50 to 2000 to be used in downstream processes.
-#leave eval=FALSE, code runs with difficulty (requires manual cutHeight addition)
+This functions will will yield a list of genes grouped in cluster sized of 50 to 2000 to be 
+used in downstream processes.
 
-```{r, clustering1, eval=FALSE, include=FALSE}
+leave eval=FALSE, code runs with difficulty (requires manual cutHeight addition)
+
+```{r, clustering1 }
 
 # Different Cluster sizes using the normal dendrogram cutree function
-cutClustvalues <- cl_lengthCut(hClust=hClust, min=50, max=2000, interval=2)
+cutClustvalues <- cl_lengthCut(hr=hClust, min=50, max=2000, interval=2)
 saveRDS(cutClustvalues, "cutClustvalues.rds")
 
 # Different Cluster sizes using the dynamic method, cutreeHybrid from the dynamicTreeCut library
-cutClustvalues_dynamic <- cl_cut_dynamic(hClust=hClust, distClust=distClust, min=4, max=302, interval=2)
+cutClustvalues_dynamic <- cl_cut_dynamic(hr=hClust, cl=distClust, min=4, max=302, interval=2)
 saveRDS(cutClustvalues_dynamic, "cutClustvalues_dynamic.rds")
 
 ```
@@ -297,7 +301,7 @@ saveRDS(cutClustvalues_dynamic, "cutClustvalues_dynamic.rds")
 
 NOT WORKING
 
-```{r, heatmaps1, eval=FALSE, include=FALSE}
+```{r, heatmaps1 }
 
 # # Visualizations
 # if (!exists("P100")){
