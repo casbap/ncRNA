@@ -60,11 +60,13 @@ cutClustvalues_dynamic <- readRDS(cutClustvalues_dynamic)
 ```
 
 ### 1. Coarse Sweep for Spearman + complete linkage 
+
 The following code will perform a K-fold validation for the imputation 
 process which uses Spearman method to measure the distance matrix and 
 complete as linkage method during the clustering process. 
 
 ```{r, coarsesweep1}
+
 # Coarse sweep of the following parameters: cluster total(304,139,93,54,30) and thresholds (0.1 to 0.9). The comments next to the cluster size in cl_list is the minumum cluster size used in the dynamic tree cut. These values are saved in the cuttree_values variable. 
 
 cl_list <- c(304, #10
