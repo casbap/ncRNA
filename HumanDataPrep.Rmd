@@ -204,18 +204,17 @@ hist(normAggScale)
 saveRDS(normAggScale,"normAggScale.rds")
 
 # Correlation Matrix
-## memory error - need to fix
-#correlate <- cor(t(normAggScale), method = "spearman")
-#correlate[upper.tri(correlate,diag=TRUE)] <- NA
+correlate <- cor(t(normAggScale), method = "spearman")
+correlate[upper.tri(correlate,diag=TRUE)] <- NA
 
-#correlate_melt <- melt(correlate, na.rm = TRUE)
+correlate_melt <- melt(correlate, na.rm = TRUE)
 
-#png("Data/hist_vds.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-#hist(correlate, breaks = 20, xlab = "Gene Correlation Values", main = "Spearman Correlation of RNASeq Counts")
-#dev.off()
+png("Data/hist_vds.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+hist(correlate, breaks = 20, xlab = "Gene Correlation Values", main = "Spearman Correlation of RNASeq Counts")
+dev.off()
 
 # Check for 0 values
-#length(which(correlate_melt$value ==0 )) # no zero values
+length(which(correlate_melt$value ==0 )) # no zero values
 
 ```
 
@@ -275,9 +274,9 @@ A specific number of clusters can be set using the cutree function.
 
 ```
 
-### 8. Clustering genes using different cluster sizes 
+### 8. Clustering genes using different cluster sizes
 
-This functions will will yield a list of genes grouped in cluster sized of 50 to 2000 to be used in downstream processes.
+This functions will will yield a list of genes grouped in cluster sized of 50 to 2000 to be used in downstream processes. Creates the dynamic cluster sizes for the cluster list used in ImputationBlinded and ClustersWithGO stages.
 #leave eval=FALSE, code runs with difficulty (requires manual cutHeight addition)
 
 ```{r, clustering1, eval=FALSE, include=FALSE}
@@ -334,7 +333,7 @@ Will investigate using Ensembl BioMart.
 ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
 
 orgGOlong <- getBM(
-  attributes=c("ensembl_gene_id","go_id","goslim_goa_accession"), 
+  attributes=c("ensembl_gene_id","go_id"), 
   mart = ensembl)
 
 orgGOlong <- orgGOlong[which(orgGOlong$go_id !="" ),]
@@ -366,7 +365,7 @@ dim(diffGOCount2)
 saveRDS(GOtable, "GOtable.rds")
 
 # Remove unneeded data
-remove(orgGOmatrix)
+remove(orgGOlong)
 
 ```
 

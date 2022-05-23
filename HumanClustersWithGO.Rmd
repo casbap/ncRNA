@@ -22,7 +22,7 @@ suppressPackageStartupMessages({c(library(R.utils), library(dplyr), library(tidy
 </br>
 
 ###  1. Download and unzip the data (ok)
-```{r Download Data, echo=TRUE}
+```{r Download Data, echo=FALSE}
 # put in an if statement to check if object exists
 
 if (!file.exists("Data/hsapiens_rand_se.tsv.bz2")){
@@ -42,7 +42,7 @@ head(orgData)
 </br>
 
 ### 2. Download, read, and unzip the QC data (ok)
-```{r QC Data, echo=TRUE}
+```{r QC Data, echo=FALSE}
 if (!file.exists("hsapiens_rand_qc.tsv.bz2")){
     download.file("http://ziemann-lab.net/public/cas/rand/hsapiens_rand_qc.tsv.bz2", 
               destfile = "hsapiens_rand_qc.tsv.bz2")}
@@ -55,7 +55,7 @@ head(qcData)
 </br>
 
 ### 3. Filter and quantify databases according to QC_SUMMARY = PASS. (ok)
-```{r QC Data Summary, echo=TRUE}
+```{r QC Data Summary, echo=FALSE}
 
 # count the total number of QC_SUMMARY entries for checking
 qcSummary <- qcData[qcData$Description == 'QC_SUMMARY',]
@@ -69,7 +69,7 @@ totalPass <- nrow(qcPass)
 </br>
 
 ### 4. Select all the databases from org_se.tsv with QC_SUMMARY == 'PASS' (ok)
-```{r Filter yeast bulk data, echo=TRUE}
+```{r Filter yeast bulk data, echo=FALSE}
 
 # filter all the sample names with QC_SUMMARY == 'PASS' from step 3
 databasePass <- filter(qcData, grepl("PASS", Details)) 
@@ -92,6 +92,17 @@ orgPassWide[1:10,1:6]
 
 ```
 </br>
+
+
+### 1. trial - load prerequisite files
+```{r, load files}
+
+# Load prerequisite objects from DataPrep stage [1]
+
+orgPassWide
+
+
+```
 
 ### 5. Aggregate the SRR run data to SRX experiment (ok)
 ```{r SRR to SRX Aggregation, echo=TRUE}
@@ -250,7 +261,7 @@ if (!file.exists("Homo_sapiens.GRCh38.ncrna.fa.gz")){
     download.file("http://ftp.ensembl.org/pub/release-105/fasta/homo_sapiens/ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz", 
               destfile = "Homo_sapiens.GRCh38.ncrna.fa.gz")}
 if (!file.exists("Homo_sapiens.GRCh38.ncrna.fa.gz")){
-    gunzip("Homo_sapiens.GRCh38.ncrna.fa.gz", destname="omo_sapiens.GRCh38.ncrna.fa.gz")}
+    gunzip("Homo_sapiens.GRCh38.ncrna.fa.gz", destname="Homo_sapiens.GRCh38.ncrna.fa.gz")}
 
 orgGO <- fread("Homo_sapiens.GRCh38.ncrna.fa.gz", sep = '\t', header = FALSE)
 
