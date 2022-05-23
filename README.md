@@ -1,6 +1,6 @@
 # ncRNA
 
-Apply previous studies on lncRNA to human data, hopefully not screwing up the code as it goes.
+[intro]
 
 RUN IN ORDER:
 1. DataPrep
@@ -9,4 +9,3 @@ RUN IN ORDER:
 4. ClustersWithGO
 5. Imputation
 
-Imputation is not currently functioning to the highest calibre
