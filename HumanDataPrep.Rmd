@@ -266,8 +266,6 @@ If a GO ID is associated with a Gene ID, the cell will equal to 1, otherwise it 
 
 Location for downloads: http://current.geneontology.org/products/pages/downloads.html
 
-That database is a bit shit because it doesn't use the ENS gene identfier.
-
 Will investigate using Ensembl BioMart.
 
 ```{r, gene_ontol1}
@@ -298,7 +296,7 @@ dim(diffGOCount2)
 # Save the new GO table
 saveRDS(GOtable, "GOtable.rds")
 # Remove unneeded data
-remove(orgGOmatrix)
+remove(orgGOlong)
 ```
 
 ### 11. Blind GO Terms (90-10 split)

@@ -260,37 +260,28 @@ dev.off()
 
 
 ### 9. Gene Ontology and Gene Data (ok)
-```{r}
-# Get the GO Annotation File (GAF) format 2.1 of org
-if (!file.exists("Homo_sapiens.GRCh38.ncrna.fa.gz")){
-    download.file("http://ftp.ensembl.org/pub/release-105/fasta/homo_sapiens/ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz", 
-              destfile = "Homo_sapiens.GRCh38.ncrna.fa.gz")}
-if (!file.exists("Homo_sapiens.GRCh38.ncrna.fa.gz")){
-    gunzip("Homo_sapiens.GRCh38.ncrna.fa.gz", destname="Homo_sapiens.GRCh38.ncrna.fa.gz")}
-
-orgGO <- fread("Homo_sapiens.GRCh38.ncrna.fa.gz", sep = '\t', header = FALSE)
-
-# Subset unique GeneIDs (V11) and GO IDs (V5) in a dataframe. Select the first gene synonym from column V11 and delete the rest. Use this as the GeneID column. Add another column with 1 in each row indicating the relationship of the Gene ID to the GO ID
-
-orgGOmatrix <- data.frame(unique(orgGO[,c(11,5)]))
-orgGOmatrix$GeneID <- gsub("\\|.*", "", orgGOmatrix$V11)
-orgGOmatrix$V3 <- as.numeric(paste(1, orgGOmatrix$V3))
-orgGOmatrix <- orgGOmatrix[,-1]
-
-# Convert the dataframe to wide format with Gene ID as column 1 and GO ID as column names 
-orgGOmatrixwide <- orgGOmatrix %>% pivot_wider(names_from = "V5", values_from = "V3")
-orgGOmatrixwide <- as.data.frame(orgGOmatrixwide)
-colnames(orgGOmatrixwide)[1] <- "GeneID"
+```{r, gene_ontologies}
+# biomart
+ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+orgGOlong <- getBM(
+  attributes=c("ensembl_gene_id","go_id"), 
+  mart = ensembl)
+orgGOlong <- orgGOlong[which(orgGOlong$go_id !="" ),]
+# GO presence absence matrix
+# gene ids in first column
+# each row represents a gene (ENSG ID)
+# each column represents a GO term eg GO:000002
+orgGOmatrixwide <- cbind(orgGOlong[1], mtabulate(as.data.frame(t(orgGOlong[-1]))))
 
 # convert NA to Zero
 orgGOmatrixwide[is.na(orgGOmatrixwide)] <- 0
 
 # save the dataframe to an RDS file
-saveRDS(orgGOmatrixwide, "orgGOmatrixwide.rds")
+saveRDS(orgGOmatrixwide, "orgGOmatrixwideCWG.rds")
 head(orgGOmatrixwide)
 
 # Remove unneeded data
-remove(orgGOmatrix)
+remove(orgGOlong)
 
 ```
 </br>
