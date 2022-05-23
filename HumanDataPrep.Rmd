@@ -32,8 +32,8 @@ suppressPackageStartupMessages({
     library(ggplot2)
     library(DESeq2)
     library(dynamicTreeCut)
-    library("biomaRt")
-    library("qdapTools")
+    library(biomaRt)
+    library(qdapTools)
 })
 source("functions.R")
 ```
@@ -126,7 +126,8 @@ orgMetadataPass <- orgMetadata[which(orgMetadata$SRR_accession %in% databasePass
 # Assign column 1 as rownames 
 rownames(orgMetadataPass) <- orgMetadataPass[,1]
 orgMetadataPass <- orgMetadataPass[,-1]
-save(orgMetadataPass, "orgMetadataPass.rds")
+orgMetadataPass
+saveRDS(orgMetadataPass, "orgMetadataPass.rds")
 # Put the filtered org GeneCount data and the filtered metadata dataframes into a list
 orgCountMetadata <- list(GeneCounts = orgPassWide, MetadataSummary = orgMetadataPass)
 # Apply both dataframes to the function

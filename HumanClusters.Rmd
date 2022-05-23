@@ -44,7 +44,7 @@ clusterPasslength <- length(unique(clusterPass))
 
 ### 2. Visualisations
 NOT FUNCTIONING CURRENTLY
-```{r echo=TRUE}
+```{r echo=FALSE}
 
 # if (!exists("P100")){
 #   P100 <- createPalette(100,  c("#ff0000", "#00ff00", "#0000ff"))}
