@@ -94,12 +94,17 @@ orgPassWide[1:10,1:6]
 </br>
 
 
-### 1. trial - load prerequisite files
-```{r, load files}
+### 1. Load prerequisite files
+```{r, load_files, echo=TRUE}
 
 # Load prerequisite objects from DataPrep stage [1]
 
-orgPassWide
+orgPassWide <- "orgPassWide.rds"
+read(orgPassWide)
+
+orgMetadataPass <- "orgMetadataPass.rds"
+read(orgMetadataPass)
+
 
 
 ```
