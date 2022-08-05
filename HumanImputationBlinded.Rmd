@@ -47,13 +47,12 @@ GO_table <-"GOtable.rds"
 GO_train <- "GOtrain.rds"
 cutClustvalues_dynamic <- "cutClustvalues_dynamic.rds"
 
-#Download data [temporary]
-# if statement checks if object exists
-if (!file.exists("Data/cutClustvalues")){
-    download.file("https://ziemann-lab.net/public/ncRNA/cutClustvalues.rds", 
-              destfile = "Data/cutClustvalues")}
-cutClustvalues <- fread("Data/cutClustvalues")
-
+#Download data [temporary - only uncomment if DataPrep not functioning due to memory issue]
+# # if statement checks if object exists
+# if (!file.exists("Data/cutClustvalues")){
+#     download.file("https://ziemann-lab.net/public/ncRNA/cutClustvalues.rds", 
+#               destfile = "Data/cutClustvalues")}
+# cutClustvalues <- fread("Data/cutClustvalues")
 
 # Normalised, aggregated, and scaled RNASeq counts
 normAggScale <- readRDS(normAggScale)
@@ -75,15 +74,17 @@ complete as linkage method during the clustering process.
 
 ```{r, coarsesweep1}
 
-# Coarse sweep of the following parameters: cluster total(304,139,93,54,30) and thresholds (0.1 to 0.9). The comments next to the cluster size in cl_list is the minumum cluster size used in the dynamic tree cut. These values are saved in the cutClustvalues_dynamic variable. 
+# Coarse sweep of the following parameters: cluster total(2407,211,117,70,36) and thresholds (0.1 to 0.9). The comments next to the cluster size in cl_list is the minumum cluster size used in the dynamic tree cut. These values are saved in the cutClustvalues_dynamic variable. 
 
-#DYNAMIC SYSTEM
+#cluster totals taken from cutClustvalues_dynamic variable and taken from 5-figure-summary
 
-cl_list <- c(304, #10
-             139, #20
-             93, #30
-             54, #50
-             30) #102
+#DYNAMIC SYSTEM to be created post-protyping stages - currently functions sub-par on local host
+
+cl_list <- c(2407, #4
+             211, #48
+             117, #94
+             70, #148
+             36) #302
 thresh_list <- c(0.1, 0.3, 0.5, 0.6)
 
 start <- Sys.time()
@@ -115,78 +116,78 @@ saveRDS(kfold_dynamic_sum, "kfold_dynamic_sum.rds")
 ### 3. Visualizations
 
 ```{r, vis1}
-# 
-# # cut tree value vs Total Clusters – line diagram
-# cuttree_totals_df <- function(cuttree_values){
-#   df <- as.data.frame(as.numeric(names(cuttree_values)))
-#   m <- list()
-#   for (i in 1:length(cuttree_values)){
-#     x <- cuttree_values[[i]][["Cut_value"]]
-#     m[[i]] <- x
-#   }
-#   df$CuttreeVal <- as.numeric(m)
-#   colnames(df)[1] <- "ClTot"
-#   png("Data/cuttreeVSclTotal.png",
-#     width = 5*300,        # 5 x 300 pixels
-#     height = 5*300,
-#     res = 300,            # 300 pixels per inch
-#     pointsize = 8)        # smaller font size
-#   
-#   ggplot(df, aes(x=CuttreeVal, y=ClTot)) +
-#     geom_line() + ylab("Total Number of Clusters") +
-#     xlab("Cuttree Values") +
-#     ggtitle("Cuttree Value vs Total Number of Clusters") +
-#     theme(plot.title = element_text(hjust = 0.5))
-#   
-#   dev.off()
-# }
-# 
-# cuttree_totals_df(cuttree_values)
-# 
-# # Total genes per cluster  – violin plot
-# c_violin <- function(cuttree_values){
-#   
-#   clTotals <- do.call(rbind.data.frame, sapply(cuttree_values, "[[", 3))
-#   clTotals$ClusterSize <- as.factor(as.numeric(str_extract_all(rownames(clTotals), "^[:digit:]*(?=.)")))
-#   clTotals$ClusterID <- as.numeric(str_extract_all(rownames(clTotals), "(?=.)\\d+$"))
-#   colnames(clTotals)[1] <- "TotalGenes"
-#   rownames(clTotals) <- c()
-#   
-#   # Filter according to cluster size
-#   cluster20_100 <- clTotals[clTotals$ClusterSize %in% c(20,50,100),]
-#   cluster200_500 <- clTotals[clTotals$ClusterSize %in% c(200, 300, 500),]
-#   cluster800_1500 <- clTotals[clTotals$ClusterSize %in% c(800, 1000, 1500),]
-#   
-#   pdf("Data/Violinplots.pdf")
-#   
-#   ggplot(cluster20_100, aes(x=ClusterSize, y=TotalGenes, fill=ClusterSize)) +
-#     geom_violin(trim=FALSE) + ylab("Total Number of Genes") +
-#     xlab("Cluster Size") +
-#     ggtitle("Distibution of genes per cluster size (20 to 100)") +
-#     theme(plot.title = element_text(hjust = 0.5)) +
-#     geom_boxplot(width=0.1, fill="white") + theme_minimal() +
-#     scale_fill_brewer(palette="Blues")
-#     
-#   ggplot(cluster200_500, aes(x=ClusterSize, y=TotalGenes, fill=ClusterSize)) +
-#     geom_violin(trim=FALSE) + ylab("Total Number of Genes") +
-#     xlab("Cluster Size") +
-#     ggtitle("Distibution of genes per cluster size (200 to 500)") +
-#     theme(plot.title = element_text(hjust = 0.5)) +
-#     geom_boxplot(width=0.1, fill="white") + theme_minimal() +
-#     scale_fill_brewer(palette="Dark2")
-#   
-#   ggplot(cluster800_1500, aes(x=ClusterSize, y=TotalGenes, fill=ClusterSize)) +
-#     geom_violin(trim=FALSE) + ylab("Total Number of Genes") +
-#     xlab("Cluster Size") +
-#     ggtitle("Distibution of genes per cluster size (800 to 1500)") +
-#     theme(plot.title = element_text(hjust = 0.5)) +
-#      geom_boxplot(width=0.1, fill="white") + theme_minimal() + 
-#     scale_fill_brewer(palette="RdBu")
-#   
-#   dev.off()
-# }
-# 
-# c_violin(cuttree_values) 
+
+# cut tree value vs Total Clusters – line diagram
+cuttree_totals_df <- function(cutClustvalues){
+  df <- as.data.frame(as.numeric(names(cutClustvalues)))
+  m <- list()
+  for (i in 1:length(cutClustvalues)){
+    x <- cutClustvalues[[i]][["Cut_value"]]
+    m[[i]] <- x
+  }
+  df$CuttreeVal <- as.numeric(m)
+  colnames(df)[1] <- "ClTot"
+  png("Data/cuttreeVSclTotal.png",
+    width = 5*300,        # 5 x 300 pixels
+    height = 5*300,
+    res = 300,            # 300 pixels per inch
+    pointsize = 8)        # smaller font size
+
+  ggplot(df, aes(x=CuttreeVal, y=ClTot)) +
+    geom_line() + ylab("Total Number of Clusters") +
+    xlab("Cuttree Values") +
+    ggtitle("Cuttree Value vs Total Number of Clusters") +
+    theme(plot.title = element_text(hjust = 0.5))
+
+  dev.off()
+}
+
+cuttree_totals_df(cutClustvalues)
+
+# Total genes per cluster  – violin plot
+c_violin <- function(cutClustvalues){
+
+  clTotals <- do.call(rbind.data.frame, sapply(cutClustvalues, "[[", 3))
+  clTotals$ClusterSize <- as.factor(as.numeric(str_extract_all(rownames(clTotals), "^[:digit:]*(?=.)")))
+  clTotals$ClusterID <- as.numeric(str_extract_all(rownames(clTotals), "(?=.)\\d+$"))
+  colnames(clTotals)[1] <- "TotalGenes"
+  rownames(clTotals) <- c()
+
+  # Filter according to cluster size
+  cluster20_100 <- clTotals[clTotals$ClusterSize %in% c(20,50,100),]
+  cluster200_500 <- clTotals[clTotals$ClusterSize %in% c(200, 300, 500),]
+  cluster800_1500 <- clTotals[clTotals$ClusterSize %in% c(800, 1000, 1500),]
+
+  pdf("Data/Violinplots.pdf")
+
+  ggplot(cluster20_100, aes(x=ClusterSize, y=TotalGenes, fill=ClusterSize)) +
+    geom_violin(trim=FALSE) + ylab("Total Number of Genes") +
+    xlab("Cluster Size") +
+    ggtitle("Distibution of genes per cluster size (20 to 100)") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    geom_boxplot(width=0.1, fill="white") + theme_minimal() +
+    scale_fill_brewer(palette="Blues")
+
+  ggplot(cluster200_500, aes(x=ClusterSize, y=TotalGenes, fill=ClusterSize)) +
+    geom_violin(trim=FALSE) + ylab("Total Number of Genes") +
+    xlab("Cluster Size") +
+    ggtitle("Distibution of genes per cluster size (200 to 500)") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    geom_boxplot(width=0.1, fill="white") + theme_minimal() +
+    scale_fill_brewer(palette="Dark2")
+
+  ggplot(cluster800_1500, aes(x=ClusterSize, y=TotalGenes, fill=ClusterSize)) +
+    geom_violin(trim=FALSE) + ylab("Total Number of Genes") +
+    xlab("Cluster Size") +
+    ggtitle("Distibution of genes per cluster size (800 to 1500)") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+     geom_boxplot(width=0.1, fill="white") + theme_minimal() +
+    scale_fill_brewer(palette="RdBu")
+
+  dev.off()
+}
+
+c_violin(cutClustvalues)
 
 
 ```
