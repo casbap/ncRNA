@@ -1,3 +1,10 @@
+install.packages("BiocManager")
+
+BiocManager::install("clusterProfiler")
+BiocManager::install("edgeR")
+BiocManager::install("DESeq2")
+BiocManager::install("biomaRt")
+
 install.packages("R.utils")
 install.packages("dplyr")
 install.packages("tidyr")
@@ -18,8 +25,3 @@ install.packages("tools")
 install.packages("igraph")
 install.packages("tidyverse")
 install.packages("BiocManager")
-
-BiocManager::install("clusterProfiler")
-BiocManager::install("edgeR")
-BiocManager::install("DESeq2")
-BiocManager::install("biomaRt")
