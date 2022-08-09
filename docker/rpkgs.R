@@ -7,6 +7,7 @@ BiocManager::install("edgeR")
 BiocManager::install("DESeq2")
 BiocManager::install("biomaRt")
 
+install.packages("systemfonts")
 install.packages("R.utils")
 install.packages("dplyr")
 install.packages("tidyr")
