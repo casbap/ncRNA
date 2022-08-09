@@ -17,6 +17,7 @@ install.packages("ggplot2")
 install.packages("tools")
 install.packages("igraph")
 install.packages("tidyverse")
+install.packages("BiocManager")
 
 BiocManager::install("clusterProfiler")
 BiocManager::install("edgeR")
