@@ -45,6 +45,7 @@ source("functions.R")
 normAggScale <- "normAggScale.rds"
 GO_table <-"GOtable.rds"
 GO_train <- "GOtrain.rds"
+cutClustvalues <- "cutClustvalues.rds"
 cutClustvalues_dynamic <- "cutClustvalues_dynamic.rds"
 
 #Download data [temporary - only uncomment if DataPrep not functioning due to memory issue]
