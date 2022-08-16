@@ -49,7 +49,7 @@ cl_lengthCut <- function(hr, min, max, interval){
     # Prepare Cluster data frame
     clusters <- as.data.frame(mycl)
     colnames(clusters) <- "ClusterNumber"
-    clusters$GeneID <- rownames(clusters)
+    clusters$ensembl_gene_id <- rownames(clusters)
     
     # Tally the total GeneIDs assigned per cluster
     a <- as.numeric(mycl_length)
@@ -105,7 +105,7 @@ cl_cut_dynamic <- function(hr, cl, min, max, interval){
     
     dyn_cl <- as.data.frame(dyn_tree$labels)
     colnames(dyn_cl) <- "ClusterNumber"
-    dyn_cl$GeneID <- hr$labels
+    dyn_cl$ensembl_gene_id <- hr$labels
     
     # Tally the total GeneIDs assigned per cluster
     mycl_length <- length(unique(dyn_tree$labels))
@@ -164,7 +164,7 @@ corr_per_clust <- function(x, y, clust_total){
   corr_cl <- list()
   for (i in 1:clust_total){
     clusterX <- y[y$ClusterNumber == i,]
-    cluster_list <- as.list(clusterX$GeneID)
+    cluster_list <- as.list(clusterX$ensembl_gene_id)
     cluster <- x[rownames(x) %in% cluster_list,]
     corr_result <- cor(t(cluster))
     corr_cl[[paste0("Cluster", i)]] <- corr_result
@@ -184,8 +184,8 @@ GO_per_cl <- function(x,y,clust_total){
   GO_cl <- list()
   for (i in 1:clust_total){
     clusterX <- y[y$ClusterNumber == i,]
-    cluster_list <- as.list(clusterX$GeneID)
-    cluster_GOterms <- x[x$GeneID %in% cluster_list,]
+    cluster_list <- as.list(clusterX$ensembl_gene_id)
+    cluster_GOterms <- x[x$ensembl_gene_id %in% cluster_list,]
     rownames(cluster_GOterms)<- cluster_GOterms[,1] 
     cluster_GOterms[,1] <- c()
     cluster_GOterms <- cluster_GOterms[,which(colSums(cluster_GOterms) > 0)]
@@ -230,8 +230,8 @@ GO_per_cl_blinded <- function(x,y,GO_list_perCl,clust_total){
   GO_cl <- list()
   for (i in 1:clust_total){
     clusterX <- y[y$ClusterNumber == i,]
-    cluster_list <- as.list(clusterX$GeneID)
-    cluster_GOterms <- x[x$GeneID %in% cluster_list,]
+    cluster_list <- as.list(clusterX$ensembl_gene_id)
+    cluster_GOterms <- x[x$ensembl_gene_id %in% cluster_list,]
     rownames(cluster_GOterms)<- cluster_GOterms[,1] 
     cluster_GOterms[,1] <- c()
     cluster_GOterms <- cluster_GOterms[, colnames(cluster_GOterms) %in% GO_list_perCl[[i]] ]
@@ -510,7 +510,7 @@ cross_val <- function(n, GO_annot, clusters, GOterms_perCl,
   set.seed(42)
   folds <- sample(1:nfolds, nrow(GO_annot), replace = TRUE)
   
-  dict_folds <- data.frame(GO_annot$GeneID, folds)
+  dict_folds <- data.frame(GO_annot$ensembl_gene_id, folds)
   
   for (i in 1:n){
     

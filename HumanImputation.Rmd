@@ -27,7 +27,6 @@ suppressPackageStartupMessages({
     library(RColorBrewer)
     library(gplots)
     library(Polychrome)
-    library(tidyverse)
 })
 
 source("functions.R")

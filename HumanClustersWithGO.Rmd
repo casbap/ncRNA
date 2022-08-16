@@ -16,7 +16,11 @@ output: html_document
 
 ### Prerequisite libraries
 ```{r Libraries, echo=TRUE}
-suppressPackageStartupMessages({c(library(R.utils), library(dplyr), library(tidyr), library(data.table), library(RColorBrewer), library(gplots), library(Polychrome), library(tidyverse), library(edgeR), library(GO.db), library(gage), library(gProfileR), library(factoextra), library(NbClust), library(org.Sc.sgd.db),library(stringi))})
+suppressPackageStartupMessages({c(library(R.utils), library(dplyr), library(tidyr), 
+  library(data.table), library(RColorBrewer), library(gplots), library(Polychrome), 
+  library(edgeR), library(GO.db), library(gage), library(gProfileR), library(factoextra),
+  library(NbClust), library(org.Sc.sgd.db), library(stringi))
+})
 
 ```
 </br>
