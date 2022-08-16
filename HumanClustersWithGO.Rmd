@@ -324,7 +324,7 @@ corrClust <- function(x, y, clust_total){
   corrClust <- list()
   for (i in 1:clust_total){
     clusterX <- y[y$ClusterNumber == i,]
-    cluster_list <- as.list(clusterX$GeneID)
+    cluster_list <- as.list(clusterX$ensembl_gene_id)
     cluster <- x[rownames(x) %in% cluster_list,]
     corr_result <- cor(t(cluster))
     corrClust[[paste0("Cluster", i)]] <- corr_result
@@ -344,8 +344,8 @@ GOperClust <- function(x,y,clust_total){
   GOClust <- list()
   for (i in 1:clust_total){
     clusterX <- y[y$ClusterNumber == i,]
-    cluster_list <- as.list(clusterX$GeneID)
-    cluster_GOterms <- x[x$GeneID %in% cluster_list,]
+    cluster_list <- as.list(clusterX$ensembl_gene_id)
+    cluster_GOterms <- x[x$ensembl_gene_id %in% cluster_list,]
     rownames(cluster_GOterms)<- cluster_GOterms[,1] 
     cluster_GOterms[,1] <- c()
     cluster_GOterms <- cluster_GOterms[,which(colSums(cluster_GOterms) > 0)]
@@ -416,14 +416,14 @@ cluster <- as.data.frame(cluster)
 colnames(cluster) <- "ClusterNumber"
 
 # make a new column, GeneID, from rownames
-cluster$GeneID <- rownames(clusters)
+cluster$ensembl_gene_id <- rownames(clusters)
 
 # Grouping genes by cluster (using cluster 1)
 cluster1 <- cluster[cluster$ClusterNumber == 1,] 
-cluster1_list <- cluster1$GeneID
+cluster1_list <- cluster1$ensembl_gene_id
 
 # look for cluster gene match in GO dictionary and subset nonzero columns 
-cluster1GO <- orgGOmatrixwide[orgGOmatrixwide$GeneID %in% cluster1_list,] 
+cluster1GO <- orgGOmatrixwide[orgGOmatrixwide$ensembl_gene_id %in% cluster1_list,] 
 cluster1GO_nzero <- cluster1GO[, !apply(cluster1GO == 0, 2, all)]
 
 # Correlation in Cluster 1  (Function counterpart: corrClust)
@@ -431,7 +431,7 @@ cluster1 <- normAgg[rownames(normAgg) %in% cluster1_list,]
 corrCluster1 <- cor(t(cluster1))
 
 # GO terms for cluster 1 (Function counterpart: GOperClust)
-cluster1GO <- orgGOmatrixwide[orgGOmatrixwide$GeneID %in% cluster1_list,]
+cluster1GO <- orgGOmatrixwide[orgGOmatrixwide$ensembl_gene_id %in% cluster1_list,]
 rownames(cluster1GO)<- cluster1GO[,1] 
 cluster1GO[,1] <- c()
 cluster1GO <- cluster1GO[,which(colSums(cluster1GO) > 0)]
@@ -476,7 +476,7 @@ inpClust1df <- (as.matrix(cluster1wGOdf) > Clust1thresh)*1
 
 # Filter original GO matrix to include only the genes of interest and the GO terms from the imputed df
 # Filter by row
-cluster1inp <- orgGOmatrixwide[orgGOmatrixwide$GeneID %in% rownames(inpClust1df),]
+cluster1inp <- orgGOmatrixwide[orgGOmatrixwide$ensembl_gene_id %in% rownames(inpClust1df),]
 rownames(cluster1inp) <- cluster1inp[,1]
 cluster1inp[,1] = c()
 # Filter by column
@@ -522,7 +522,7 @@ row.names(inpClust1df) <- row.names(cluster1GO2df)
 
 # Filter original GO matrix to include only the genes of interest and the GO terms from the imputed df
 # Filter by row
-cluster1inp <- orgGOmatrixwide[orgGOmatrixwide$GeneID %in% rownames(inpClust1df),]
+cluster1inp <- orgGOmatrixwide[orgGOmatrixwide$ensembl_gene_id %in% rownames(inpClust1df),]
 rownames(cluster1inp) <- cluster1inp[,1]
 cluster1inp[,1] = c()
 # Filter by column
@@ -575,7 +575,7 @@ row.names(impClust3df) <- row.names(cluster3wGO2df)
 
 # Filter original GO matrix to include only the genes of interest and the GO terms from the imputed df
 # Filter by row
-cluster3inp <- orgGOmatrixwide[orgGOmatrixwide$GeneID %in% rownames(impClust3df),]
+cluster3inp <- orgGOmatrixwide[orgGOmatrixwide$ensembl_gene_id %in% rownames(impClust3df),]
 rownames(cluster3inp) <- cluster3inp[,1]
 cluster3inp[,1] = c()
 # Filter by column

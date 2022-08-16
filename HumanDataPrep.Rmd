@@ -238,7 +238,7 @@ cutClustlength
 # This is the base code used in the cl_lengthCut function below
 clusters <- as.data.frame(cutClust)
 colnames(clusters) <- "ClusterNumber"
-clusters$GeneID <- rownames(clusters)
+clusters$ensembl_gene_id <- rownames(clusters)
   
 ```
 

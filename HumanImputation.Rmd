@@ -60,14 +60,14 @@ corrAllClusters <-  readRDS(corrAllClusters)
 
 # Grouping genes by cluster (using cluster 1)
 cluster1 <- clusters[clusters$ClusterNumber == 1,] 
-cluster1_list <- cluster1$GeneID
+cluster1_list <- cluster1$ensembl_gene_id
 
 # Correlation in Cluster 1  (Function counterpart: corrClust)
 cluster_1 <- normAgg[rownames(normAgg) %in% cluster1_list,]
 corrClust1 <- cor(t(cluster_1))
 
 # GO terms for cluster 1 (Function counterpart: GOperClust)
-cluster1GO <- GO_table[GO_table$GeneID %in% cluster1_list,]
+cluster1GO <- GO_table[GO_table$ensembl_gene_id %in% cluster1_list,]
 rownames(cluster1GO) <- cluster1GO[,1] 
 cluster1GO[,1] <- c()
 cluster1GO <- cluster1GO[,which(colSums(cluster1GO) > 0)]
@@ -174,7 +174,7 @@ clusterVal <- cl_lengthCut(hr=hr, min=1.297, max=3.378, interval=0.001)
 saveRDS(clusterVal, "clusterVal.rds")
 
 # Number of gene IDs with no GO IDs
-nullOnt <- setdiff(unique(rownames(agg)),unique(GO_table$GeneID))
+nullOnt <- setdiff(unique(rownames(agg)),unique(GO_table$ensembl_gene_id))
 length(nullOnt)
 ```
 
