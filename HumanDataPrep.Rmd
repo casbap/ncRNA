@@ -249,7 +249,9 @@ used in downstream processes.
 
 leave eval=FALSE, code runs with difficulty (requires manual cutHeight addition)
 
-```{r, clustering1, eval=FALSE }
+
+
+```{r, clustering1, eval=TRUE }
 # Different Cluster sizes using the normal dendrogram cutree function
 cutClustvalues <- cl_lengthCut(hr=hClust, min=50, max=2000, interval=2)
 saveRDS(cutClustvalues, "cutClustvalues.rds")
