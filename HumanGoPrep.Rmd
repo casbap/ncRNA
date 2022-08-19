@@ -79,6 +79,10 @@ GO_table <- GO_table[-IndexRemoved,]
 dim(GO_table)
 head(rowSums(GO_table[,2:ncol(GO_table)]),50)
 
+GO_table <- aggregate(. ~ ensembl_gene_id,GO_table,sum)
+dim(GO_table)
+GO_table[1:10,1:6]
+
 # Save the new GO table
 saveRDS(GO_table, "GO_table.rds")
 # Remove unneeded data
