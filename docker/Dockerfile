@@ -50,7 +50,8 @@ RUN \
     gnupg \
     apt-transport-https \
     ca-certificates \
-    software-properties-common
+    software-properties-common \
+    libcairo2-dev
 
 ########################################
 # install official R4.2
