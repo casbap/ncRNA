@@ -72,17 +72,18 @@ diffCountGO <- setdiff(rownames(agg), orgGOmatrixwide$ensembl_gene_id)
 diffGOCount <- setdiff(orgGOmatrixwide$ensembl_gene_id, rownames(agg))
 # Remove the GeneIDs that are in the GO matrix but not in the gene count data
 IndexRemoved <- which(orgGOmatrixwide$ensembl_gene_id %in% diffGOCount)
-GOtable <- orgGOmatrixwide
-GOtable <- GOtable[-IndexRemoved,]
+GO_table <- orgGOmatrixwide
+GO_table <- GO_table[-IndexRemoved,]
 
 # the data structure is weird in that genes are shown as multiple rows
-dim(GOtable)
-head(rowSums(GOtable[,2:ncol(GOtable)]),50)
+dim(GO_table)
+head(rowSums(GO_table[,2:ncol(GO_table)]),50)
 
 # Save the new GO table
-saveRDS(GOtable, "GOtable.rds")
+saveRDS(GO_table, "GO_table.rds")
 # Remove unneeded data
 remove(orgGOlong)
+
 ```
 
 ### 11. Blind GO Terms (90-10 split)
@@ -92,15 +93,15 @@ After the model has been optimised, these IDs will be unblided as the testing da
 
 ```{r, blind_terms, echo=TRUE}
 #Fraction of the total number of genes to be blinded
-test_size <- floor(0.10 * nrow(GOtable))
+test_size <- floor(0.10 * nrow(GO_table))
 ## set the seed to make your partition reproducible
 set.seed(42)
-blinded_ind <- sample(seq_len(nrow(GOtable)), size = test_size)
-GOtrain <- GOtable
-GOtrain[blinded_ind, 2:ncol(GOtrain)] = 0
+blinded_ind <- sample(seq_len(nrow(GO_table)), size = test_size)
+GO_train <- GO_table
+GO_train[blinded_ind, 2:ncol(GO_train)] = 0
 GO_train <- aggregate(. ~ ensembl_gene_id,GO_train,sum)
-saveRDS(GOtrain, "GOtrain.rds")
-GO_test <- GOtable[blinded_ind,]
+saveRDS(GO_train, "GO_train.rds")
+GO_test <- GO_table[blinded_ind,]
 saveRDS(GO_test, "GO_test.rds")
 normAggScale <- readRDS("normAggScale.rds")
 normAggScale_test <- normAggScale[rownames(normAggScale) %in% GO_test$ensembl_gene_id,]

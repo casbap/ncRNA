@@ -42,8 +42,8 @@ source("functions.R")
 ```{r, load1}
 
 normAggScale <- "normAggScale.rds"
-GO_table <-"GOtable.rds"
-GO_train <- "GOtrain.rds"
+GO_table <-"GO_table.rds"
+GO_train <- "GO_train.rds"
 cutClustvalues <- "cutClustvalues.rds"
 cutClustvalues_dynamic <- "cutClustvalues_dynamic.rds"
 
