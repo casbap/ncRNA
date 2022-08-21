@@ -228,7 +228,7 @@ GO_per_cl_list <- function(x,clust_total){
 
 GO_per_cl_blinded <- function(x,y,GO_list_perCl,clust_total){
   GO_cl <- list()
-  for (i in 1:clust_total){
+  for (i in 1:length(GO_list_perCl)){
     clusterX <- y[y$ClusterNumber == i,]
     cluster_list <- as.list(clusterX$ensembl_gene_id)
     cluster_GOterms <- x[x$ensembl_gene_id %in% cluster_list,]
