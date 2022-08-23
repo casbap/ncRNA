@@ -169,18 +169,22 @@ saveRDS(normAggScale,"normAggScale.rds")
 # memory error - need to fix
 correlate <- cor(t(normAggScale), method = "spearman")
 correlate[upper.tri(correlate,diag=TRUE)] <- NA
-correlate1 <- correlate[1:30000,]
-correlate2 <- correlate[30001:nrow(correlate),]
 
-correlate_melt1 <- reshape2::melt(correlate1, na.rm = TRUE)
-correlate_melt2 <- reshape2::melt(correlate2, na.rm = TRUE)
-
-correlate_melt <- rbind(correlate_melt1, correlate_melt2)
-remove(correlate_melt1)
-remove(correlate_melt2)
+if(nrow(correlate)>30000) {
+  correlate1 <- correlate[1:30000,]
+  correlate2 <- correlate[30001:nrow(correlate),]
+  correlate_melt1 <- reshape2::melt(correlate1, na.rm = TRUE)
+  correlate_melt2 <- reshape2::melt(correlate2, na.rm = TRUE)
+  correlate_melt <- rbind(correlate_melt1, correlate_melt2)
+  remove(correlate_melt1)
+  remove(correlate_melt2)
+} else {
+  correlate_melt <- reshape2::melt(correlate, na.rm = TRUE)
+}
 
 png("Data/hist_vds.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-hist(correlate, breaks = 20, xlab = "Gene Correlation Values", main = "Spearman Correlation of RNASeq Counts")
+hist(correlate, breaks = 20, xlab = "Gene Correlation Values", 
+  main = "Spearman Correlation of RNASeq Counts")
 dev.off()
 
 # Check for 0 values
@@ -253,10 +257,12 @@ leave eval=FALSE, code runs with difficulty (requires manual cutHeight addition)
 
 ```{r, clustering1, eval=TRUE }
 # Different Cluster sizes using the normal dendrogram cutree function
-cutClustvalues <- cl_lengthCut(hr=hClust, min=50, max=2000, interval=2)
+MAX = min(length(hClust$height),2000)
+cutClustvalues <- cl_lengthCut(hr=hClust, min=50, max=MAX, interval=2)
 saveRDS(cutClustvalues, "cutClustvalues.rds")
 # Different Cluster sizes using the dynamic method, cutreeHybrid from the dynamicTreeCut library
-cutClustvalues_dynamic <- cl_cut_dynamic(hr=hClust, cl=distClust, min=4, max=302, interval=2)
+cutClustvalues_dynamic <- cl_cut_dynamic(hr=hClust, cl=distClust, 
+  min=4, max=302, interval=2)
 saveRDS(cutClustvalues_dynamic, "cutClustvalues_dynamic.rds")
 
 head(cutClustvalues_dynamic)
