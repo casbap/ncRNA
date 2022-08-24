@@ -30,6 +30,7 @@ suppressPackageStartupMessages({
     library(tools)
     library(igraph)
     library("purrr")
+    library(stringr)
 })
 
 source("functions.R")
