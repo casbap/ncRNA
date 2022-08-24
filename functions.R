@@ -138,15 +138,19 @@ cl_cut_dynamic <- function(hr, cl, min, max, interval){
 edge_list <- function(corr_allCl, clust_total){
   e_list <- list()
   
-  for(i in 1:clust_total){
-    # Create igraph object
-    cor_g <- graph_from_adjacency_matrix(corr_allCl[[i]], 
-        mode='directed', weighted = 'correlation', 
-        diag = TRUE)
-    # Extract edge list
-    cor_edge_list <- get.data.frame(cor_g, 'edges')
+  for(y in 1:as.numeric(clust_total)){
+    print(y)
+    e_list[[paste0("Cluster", y)]] <- 0
+    if ( length(as.vector(corr_allCl[[y]])) > 1 ) {
+      # Create igraph object
+      cor_g <- graph_from_adjacency_matrix(corr_allCl[[y]], 
+          mode='directed', weighted = 'correlation', 
+          diag = TRUE)
+      # Extract edge list
+      cor_edge_list <- get.data.frame(cor_g, 'edges')
     
-    e_list[[paste0("Cluster", i)]] <- cor_edge_list
+      e_list[[paste0("Cluster", y)]] <- cor_edge_list
+    }
   }
   return(e_list)
 }
@@ -513,10 +517,10 @@ cross_val <- function(n, GO_annot, clusters, GOterms_perCl,
   
   dict_folds <- data.frame(GO_annot$ensembl_gene_id, folds)
   
-  for (i in 1:n){
+  for (z in 1:n){
     
-    which_fold <- i
-    print(paste0("Fold ", i))
+    which_fold <- z
+    print(paste0("Fold ", z))
     ind_blinded <- which(dict_folds$folds == which_fold)
     GO_blinded <- GO_annot
     GO_blinded[ind_blinded, 2:ncol(GO_blinded)] = 0
@@ -541,7 +545,7 @@ cross_val <- function(n, GO_annot, clusters, GOterms_perCl,
     stats_perCl <- stats_cl(wGO_blinded, clust_total)
     stats_final <- stats_all(stats_perCl)
     
-    stats[[paste0("Fold", i)]] <- stats_final
+    stats[[paste0("Fold", z)]] <- stats_final
   }
   stats[["Index_folds"]] <- dict_folds
   return(stats)
