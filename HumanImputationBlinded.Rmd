@@ -28,7 +28,8 @@ suppressPackageStartupMessages({
     library(ggplot2)
     library(reshape2)
     library(tools)
-    library (igraph)
+    library(igraph)
+    library("purrr")
 })
 
 source("functions.R")

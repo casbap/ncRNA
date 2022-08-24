@@ -140,8 +140,9 @@ edge_list <- function(corr_allCl, clust_total){
   
   for(i in 1:clust_total){
     # Create igraph object
-    cor_g <- graph_from_adjacency_matrix(corr_allCl[[i]], mode='directed', weighted = 'correlation', 
-                                         diag = TRUE)
+    cor_g <- graph_from_adjacency_matrix(corr_allCl[[i]], 
+        mode='directed', weighted = 'correlation', 
+        diag = TRUE)
     # Extract edge list
     cor_edge_list <- get.data.frame(cor_g, 'edges')
     
@@ -529,8 +530,12 @@ cross_val <- function(n, GO_annot, clusters, GOterms_perCl,
     cor_edge_list <- edge_list(corr_allCl=corr_clAll, clust_total)
     
     # Impute function
-    wGO_blinded <- impute(GOterms_perCl, GO_blindedCl, corr_clAll,
-                          clust_total, cor_edge_list, thresh)
+    wGO_blinded <- impute(GOterms_perCl=GOterms_perCl, 
+      cl_GOall=GO_blindedCl,
+      corr_clAll=corr_clAll,
+      clust_total=clust_total,
+      cor_edge_list=cor_edge_list,
+      thresh=thresh)
     
     # stats
     stats_perCl <- stats_cl(wGO_blinded, clust_total)
