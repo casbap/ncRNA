@@ -80,19 +80,19 @@ complete as linkage method during the clustering process.
 
 #DYNAMIC SYSTEM to be created post-protyping stages - currently functions sub-par on local host
 
-cl_list <- c(2407, #4
-             211, #48
-             117, #94
-             70, #148
-             36) #302
+#extract out sizes from previous work
+cl_size <- names(cuttree_values)
+cl_size <- cl_size[seq(1,length(cl_size),5)]
 
 thresh_list <- c(0.1, 0.3, 0.5, 0.6)
 
 start <- Sys.time()
 
-sample_kfold <- optimise_impute(cl_list, thresh_list, 
-  cutClustvalues_dynamic, normAggScale,
-  GO_train)
+sample_kfold <- optimise_impute(cl_list=cl_list,
+  thresh_list=thresh_list, 
+  cuttree_values=cutClustvalues_dynamic,
+  counts=normAggScale,
+  GO_annot=GO_train)
 
 end <- Sys.time()
 totalTime <- end - start
