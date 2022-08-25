@@ -1,11 +1,11 @@
 # ncRNA
 
-[intro]
-
 RUN IN ORDER:
-1. DataPrep
-2. ImputationBlinded
-3. Clusters
-4. ClustersWithGO
-5. Imputation
+
+1. HumanDataPrep.Rmd
+2. HumanGoPrep.Rmd
+3. HumanImputationBlinded.Rmd
+4. HumanClusters.Rmd
+5. HumanClustersWithGO.Rmd
+6. HumanImputation.Rmd
 
