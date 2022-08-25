@@ -63,6 +63,8 @@ orgGOlong <- orgGOlong[which(orgGOlong$go_id !="" ),]
 # each row represents a gene (ENSG ID)
 # each column represents a GO term eg GO:000002
 orgGOmatrixwide <- cbind(orgGOlong[1], mtabulate(as.data.frame(t(orgGOlong[-1]))))
+#aggregate it to shrink
+orgGOmatrixwide <- aggregate(. ~ ensembl_gene_id,orgGOmatrixwide,sum)
 # Save the dataframe to an RDS file
 saveRDS(orgGOmatrixwide, "orgGOmatrixwide.rds")
 # GeneIDs that are in the gene count data but not in the GO matrix

@@ -17,7 +17,7 @@ output: html_document
 
 ### Prerequisite libraries
 
-```{r Libraries, echo=TRUE}
+```{r, libraries, echo=TRUE}
 
 suppressPackageStartupMessages({
     library(R.utils)
@@ -37,19 +37,11 @@ source("functions.R")
 
 ```{r , loadrds}
 
-normAgg <- "normAgg.rds"
-agg <- "agg.rds"
-clusterPass <- "clusterPass.rds"
-GO_table <- "GO_table.rds"
-GOallClusters <- "GOallClusters.rds"
-corrAllClusters <- "corrAllClusters.rds"
-
-normAgg <- readRDS(normAgg)
-agg <- readRDS(agg)
-clusterPass <- readRDS(clusterPass)
-GO_table <- readRDS(GO_table)
-GOallClusters <-  readRDS(GOallClusters)
-corrAllClusters <-  readRDS(corrAllClusters)
+normAgg <- readRDS("normAggScale.rds")
+clusterPass <- readRDS("clusterPass.rds")
+GO_table <- readRDS("GO_table.rds")
+GOallClusters <-  readRDS("GOallClusters.rds")
+corrAllClusters <-  readRDS("corrAllClusters.rds")
 
 ```
 
@@ -173,7 +165,7 @@ clusterVal <- cl_lengthCut(hr=hr, min=1.297, max=3.378, interval=0.001)
 saveRDS(clusterVal, "clusterVal.rds")
 
 # Number of gene IDs with no GO IDs
-nullOnt <- setdiff(unique(rownames(agg)),unique(GO_table$ensembl_gene_id))
+nullOnt <- setdiff(unique(rownames(normAgg)),unique(GO_table$ensembl_gene_id))
 length(nullOnt)
 ```
 

@@ -91,6 +91,8 @@ srxAgg <- function(x,counts="GeneCounts") {
 
 # Put the filtered org GeneCount data and the filtered metadata dataframes into a list
 orgCountMetadata <- list(GeneCounts = orgPassWide, MetadataSummary = orgMetadataPass)
+remove(orgPassWide)
+remove(orgMetadataPass)
 
 # Apply both dataframes to the function
 agg <- srxAgg(orgCountMetadata)
@@ -152,6 +154,7 @@ plot(cpm[,1], agg[,1], ylim=c(0,50), xlim=c(0,3),
   abline(v=0.6, h=10, col="blue"), 
   ylab = "Counts", xlab = "CPM", 
   main = "Counts-per-million (CPM) vs Counts")
+remove(cpm)
 
 # Convert counts to DGEList object (from edgeR library)
 dgeObj <- DGEList(keepCount)
@@ -163,11 +166,12 @@ dgeObj <- calcNormFactors(dgeObj)
 
 # Get log2 counts per million
 normAgg <- cpm(dgeObj,log=TRUE)
+remove(dgeObj)
 
 # Check distributions of samples
 hist(normAgg)
 hist(keepCount)
-
+remove(keepCount)
 all(apply(apply(normAgg, 2, function(x) x==0), 2, any))
 
 ```
@@ -181,6 +185,7 @@ all(apply(apply(normAgg, 2, function(x) x==0), 2, any))
 # Applying Hierarchical Clustering after normalization
 distClust <- as.dist(1-cor(t(normAgg), method="spearman"))
 hClust <- hclust(distClust , method="complete")
+remove(distClust)
 
 # optimizing the cluster size
 clusterPass <- cutree(hClust, h=max(hClust$height/1.64))
@@ -227,11 +232,11 @@ dictBlind <- data.frame(blind, rand)
 # save the dictionary into an RDS file
 saveRDS(dictBlind, "dictBlind.rds")
 
-aggRand <- agg
+indBlind <- which(rownames(agg) %in% blind)
 
-indBlind <- which(rownames(aggRand) %in% blind)
+rownames(agg)[indBlind] <- rand
 
-rownames(aggRand)[indBlind] <- rand
+remove(agg)
 
 ```
 
@@ -239,7 +244,7 @@ rownames(aggRand)[indBlind] <- rand
 
 ### 11. Functions for Cluster Analysis 
 
-```{r, funcs, echo=TRUE}
+```{r, func1}
 
 # This function's output is a nested list with of the genes grouped per cluster and 
 # their corresponding correlation values. Inputs:
@@ -259,7 +264,11 @@ corrClust <- function(x, y, clust_total){
 }
 
 corrAllClusters <- corrClust(normAgg, clusterPass, 100)
+remove(normAgg)
 
+```
+
+```{r, func2}
 
 # This function's output is a list of data frames containing all GO terms 
 # associated with the genes belonging to a cluster. Input:
@@ -270,8 +279,7 @@ corrAllClusters <- corrClust(normAgg, clusterPass, 100)
 GOperClust <- function(x,y,clust_total){
   GOClust <- list()
   for (i in 1:clust_total){
-    clusterX <- y[y$ClusterNumber == i,]
-    cluster_list <- as.list(clusterX$ensembl_gene_id)
+    cluster_list <- names(y)[which(y == i)]
     cluster_GOterms <- x[x$ensembl_gene_id %in% cluster_list,]
     rownames(cluster_GOterms)<- cluster_GOterms[,1] 
     cluster_GOterms[,1] <- c()
@@ -282,8 +290,11 @@ GOperClust <- function(x,y,clust_total){
 }
 
 orgGOmatrixwide <- readRDS("orgGOmatrixwide.rds")
-GOallClusters <- GOperClust(orgGOmatrixwide, clusters, 100)
+GOallClusters <- GOperClust(orgGOmatrixwide, clusterPass, 100)
 saveRDS(GOallClusters,"GOallClusters.rds")
+remove(orgGOmatrixwide)
+
+```{r, func3}
 
 # This function's output is a nested list of genes belonging to a cluster with their corresponding weighted correlations. Input:
 # gene_list = list of genes to be correlated; corrClust = correlation values for cluster
@@ -308,354 +319,7 @@ weightcorrClust <- function(gene_list, corrClust, cl_GO){
 
 cluster1GO <- weightcorrClust(corrblind1, corrClust1, cluster1GO)
 
-
-# Sum of corr values are used as a denominator in normalized_weighted_go
-weightcorr2Clust <- function(gene_list, corrClust, cl_GO){
-  weightcorrClust <- list()
-  
-  for (i in gene_list){
-    corr_value <- corrClust[i,]
-    corr_value_df <- as.data.frame(corr_value)
-    weighted_go <- merge(corr_value_df, cl_GO, by = "row.names")
-    rownames(weighted_go) <- weighted_go[,1]
-    weighted_go[,1] <- c()
-    # this is where this differs from the original function. The sum of the correlation values for         gene1 in the gene_list is used as the denominator for the normalized_weighted_go object instead of     the nrow of the dataframe. This follows the formula of the weighted average, assuming that the corr     values are the "weights" 
-    corr_colsum <- sum(weighted_go[,1])
-    weighted_go <- weighted_go[,1]*weighted_go[,2:ncol(weighted_go)]
-    normalized_weighted_go <- colSums(weighted_go)/corr_colsum
-    weightcorrClust[[i]] <- normalized_weighted_go
-  }
-  setNames(weightcorrClust, paste0(i))
-  return(weightcorrClust)
-}
-
-cluster1GO2 <- weightcorr2Clust(corrblind1, corrClustuster1, cluster1GO)
-
 ```
-
-</br>
-
-### 12. Cluster Analysis
-
-```{r, cluster_analysis}
-
-# Prepare Cluster data frame
-cluster <- as.data.frame(cluster)
-colnames(cluster) <- "ClusterNumber"
-
-# make a new column, GeneID, from rownames
-cluster$ensembl_gene_id <- rownames(clusters)
-
-# Grouping genes by cluster (using cluster 1)
-cluster1 <- cluster[cluster$ClusterNumber == 1,] 
-cluster1_list <- cluster1$ensembl_gene_id
-
-# look for cluster gene match in GO dictionary and subset nonzero columns 
-cluster1GO <- orgGOmatrixwide[orgGOmatrixwide$ensembl_gene_id %in% cluster1_list,] 
-cluster1GO_nzero <- cluster1GO[, !apply(cluster1GO == 0, 2, all)]
-
-# Correlation in Cluster 1  (Function counterpart: corrClust)
-cluster1 <- normAgg[rownames(normAgg) %in% cluster1_list,]
-corrCluster1 <- cor(t(cluster1))
-
-# GO terms for cluster 1 (Function counterpart: GOperClust)
-cluster1GO <- orgGOmatrixwide[orgGOmatrixwide$ensembl_gene_id %in% cluster1_list,]
-rownames(cluster1GO)<- cluster1GO[,1] 
-cluster1GO[,1] <- c()
-cluster1GO <- cluster1GO[,which(colSums(cluster1GO) > 0)]
-
-# weighted correlation for Cluster 1 (Function counterpart: weightcorrCluster)
-corrblind1 <- cluster1_list[cluster1_list %in% dictBlind$blind]
-geneblind1 <- corrblind1[1]
-
-# Subset the row which contains geneblind1 and turn it into a data frame
-corr_value_blind1 <- corrCluster1[geneblind1,]
-corrblind1df <- as.data.frame(corr_value_blind1)
-
-# Merge the GO terms data frame for cluster 1 and the correlation values for geneblind1 
-weightGOClust1 <- merge(corrblind1df, cluster1GO, by = "row.names")
-rownames(weightGOClust1) <- weightGOClust1[,1]
-weightGOClust1[,1] <- c()
-corr_colsum <- sum(weightGOClust1[,1])
-weightGOClust1 <- weightGOClust1[,1]*weightGOClust1[,2:ncol(weightGOClust1)]
-normweightGOClust1 <- colSums(weightGOClust1)/corr_colsum 
-hist(normweightGOClust1)
-
-
-# Use function, wcorrCluster, to get the weighted values for all blinded genes in cluster 1
-cluster1wGO <- wcorrCluster(corrblind1, corrCluster1, cluster1GO)
-
-# Determining threshold based on histogram
-hist(cluster1wGO$YPR002W)
-inpGO <- names(which(normweightGOClust1 > 0.1))
-
-# Convert output into a data frame with columns as GO terms and rows as gene names
-cluster1wGOdf <- as.data.frame(do.call(rbind, cluster1wGO))
-cluster1wGOdf <- cluster1wGOdf[order(rownames(cluster1wGOdf)),]
-cluster1wGOdf <- cluster1wGOdf[,order(colnames(cluster1wGOdf))]
-
-# using 0.1 as threshold
-Clust1thresh <- 0.005
-
-inpClust1df2 <- (as.matrix(cluster1wGOdf) > Clust1thresh)*1
-inpClust1df <- (as.matrix(cluster1wGOdf) > Clust1thresh)*1
-
-
-
-# Filter original GO matrix to include only the genes of interest and the GO terms from the imputed df
-# Filter by row
-cluster1inp <- orgGOmatrixwide[orgGOmatrixwide$ensembl_gene_id %in% rownames(inpClust1df),]
-rownames(cluster1inp) <- cluster1inp[,1]
-cluster1inp[,1] = c()
-# Filter by column
-cluster1inp <- cluster1inp[,colnames(cluster1inp) %in% colnames(inpClust1df)]
-# Order by row names and column names
-cluster1inp1 <- cluster1inp[order(rownames(cluster1inp)),]
-cluster1inp1 <- cluster1inp[,order(colnames(cluster1inp))]
-
-
-# Filter inpClust1df object to include the genes and GO terms of cluster1inp object above
-inpClust1trim <- inpClust1df[rownames(inpClust1df2) %in% rownames(cluster1inp),]
-# Order by row names for direct comparison
-inpClust1trim <- inpClust1trim[order(rownames(inpClust1trim)),]
-
-
-# Comparison between input df and resultant df
-Clust1inpVSinp <- ifelse(cluster1inp == inpClust1trim, TRUE, FALSE)
-
-# Negative 1 values appear for threshold > 0.005
-Clust1neg <- inpClust1trim - cluster1inp
-which(Clust1neg == -1)
-
-```
-
-</br>
-
-### Using weightcorr2Clust
-
-```{r, weight, echo=TRUE}
-
-cluster1GO2 <- weightcorr2Clust(corrblind1, corrCluster1, cluster1GO)
-
-# Convert output into a data frame with columns as GO terms and rows as gene names
-cluster1GO2df <- as.data.frame(do.call(rbind, cluster1GO2))
-cluster1GO2df <- cluster1GO2df[order(rownames(cluster1GO2df)),]
-cluster1GO2df <- cluster1GO2df[,order(colnames(cluster1GO2df))]
-
-# using 0.01 as threshold
-Clust1thresh <- 0.01
-
-inpClust1df <- as.data.frame(sapply(cluster1GO2df, function(x){
-   as.numeric(x > Clust1_threshold)
-  }))
-row.names(inpClust1df) <- row.names(cluster1GO2df)
-
-# Filter original GO matrix to include only the genes of interest and the GO terms from the imputed df
-# Filter by row
-cluster1inp <- orgGOmatrixwide[orgGOmatrixwide$ensembl_gene_id %in% rownames(inpClust1df),]
-rownames(cluster1inp) <- cluster1inp[,1]
-cluster1inp[,1] = c()
-# Filter by column
-cluster1inp <- cluster1inp[,colnames(cluster1inp) %in% colnames(inpClust1df)]
-# Order by row names and column names
-cluster1inp1 <- cluster1inp[order(rownames(cluster1inp)),]
-cluster1inp1 <- cluster1inp[,order(colnames(cluster1inp))]
-
-
-# Filter inpClust1df object to include the genes and GO terms of cluster1inp object above
-inpClust1trim <- inpClust1df[rownames(inpClust1df) %in% rownames(cluster1inp),]
-# Order by row names for direct comparison
-inpClust1trim <- inpClust1trim[order(rownames(inpClust1trim)),]
-inpClust1trim <- inpClust1trim[,order(colnames(inpClust1trim))]
-
-# Comparison between input df and resultant df
-Clust1inpVSinp2 <- ifelse(cluster1inp == inpClust1trim, TRUE, FALSE)
-
-# Negative 1 values appear for threshold > 0.01
-Clust1neg <- inpClust1trim - cluster1inp
-which(Clust1neg == -1)
-
-```
-
-</br>
-
-### Using cluster 3
-
-```{r, cluster3, echo=TRUE}
-
-corrCluster3 <- corrAllClusters$Cluster3
-clust3GO <- GOallClusters$Cluster3
-cluster3_list <- rownames(clust3GO)
-# Make a function to list all blind genes in a cluster
-clust3blind <- cluster3_list[cluster3_list %in% dictBlind$blind]
-
-cluster3wGO2 <- weightcorr2Clust(clust3blind, corrCluster3, clust3GO)
-
-# Convert output into a data frame with columns as GO terms and rows as gene names
-cluster3wGO2df <- as.data.frame(do.call(rbind, cluster3wGO2))
-cluster3wGO2df <- cluster3wGO2df[order(rownames(cluster3wGO2df)),]
-cluster3wGO2df <- cluster3wGO2df[,order(colnames(cluster3wGO2df))]
-
-# using 0.01 as threshold
-Clust3thresh <- 0.01
-
-impClust3df <- as.data.frame(sapply(cluster3wGO2df, function(x){
-   as.numeric(x > Clust3thresh)
-  }))
-impClust3df <- t(impClust3df)
-row.names(impClust3df) <- row.names(cluster3wGO2df)
-
-# Filter original GO matrix to include only the genes of interest and the GO terms from the imputed df
-# Filter by row
-cluster3inp <- orgGOmatrixwide[orgGOmatrixwide$ensembl_gene_id %in% rownames(impClust3df),]
-rownames(cluster3inp) <- cluster3inp[,1]
-cluster3inp[,1] = c()
-# Filter by column
-cluster3inp <- cluster3inp[,colnames(cluster3inp) %in% colnames(impClust3df)]
-# Order by row names and column names
-cluster3inp <- cluster3inp[order(rownames(cluster3inp)),]
-cluster3inp <- cluster3inp[,order(colnames(cluster3inp))]
-
-
-# Filter impClust3df object to include the genes and GO terms of cluster1inp object above
-inpClust3trim <- impClust3df[rownames(impClust3df) %in% rownames(cluster3inp),]
-
-# Comparison between input df and resultant df
-Clust3inpVSinp3 <- ifelse(cluster3inp == inpClust3trim, TRUE, FALSE)
-
-# Negative 1 values appear for threshold > 0.01
-Clust3neg <- inpClust3trim - cluster3inp
-which(Clust3neg == -1)
-
-```
-
-</br>
-
-
-### 13. Gene Enrichment Analysis 
-
-```{r, enrich, echo=TRUE}
-
-# ---------Functional Enrichment Analysis using using goProfileR
-
-# Gene enrichment query
-goResults_1 <- gprofiler(query = genesOfInterest,
-                     organism = 'org',
-                     hier_filtering = 'none')
-
-## Subset and reorder gProfiler results to only include columns of interest
-gprofiler_results_oe_reordered <- goResults_1[, c("term.id", "domain", "term.name", "p.value", "overlap.size", "term.size", "intersection")]
-
-# Order the results by p-adjusted value
-gprofiler_results_oe_reordered <- gprofiler_results_oe_reordered[order(gprofiler_results_oe_reordered$p.value), ]
- 
-# Extract only the 'GO' terms from the results
-gprofiler_results_oe_GOs <- gprofiler_results_oe_reordered[grep('GO:', gprofiler_results_oe_reordered$term.id), ]
-
-# Write the enriched GO results to file
-write.csv(gprofiler_results_oe_GOs,
-            "Data/gprofiler_cluster1.csv")
-
-
-# --------Over-representation analysis of biological processes
-# perform Gene Set Enrichment Analysis (GSEA) using gage package
-
-columns(org.Sc.sgd.db)
-keys(org.Sc.sgd.db)
-keytypes(org.Sc.sgd.db)
-
-# The input to gage must be Entrez identifiers so we first need to map our gene symbols to Entrez
-ann <- mapIds(org.Sc.sgd.db, keys=rownames(cluster1), column="ENTREZID", keytype="ENSEMBL")
-cluster1_non_na <- names(!is.na(ann))
-fc <- normAgg[rownames(normAgg) %in% cluster1_non_na,]
-
-table(is.na(fc))
-
-# Create a mapping between gene identifiers and GO terms.
-allGo <- as.list(GOTERM)
-bp <- Filter(function(go) go@Ontology == 'BP', allGo)
-goMapping <- mget(names(bp), org.Sc.sgdGO2ALLORFS, ifnotfound=NA)
-
-# gene set enrichment analysis
-goFc <- gage(fc, goMapping)
-goGreater <- as.data.frame(goFc$greater)
-goGreater <- goGreater[goGreater$q.val < 0.01 & !is.na(goGreater$q.val),]
-goTermNames <- lapply(mget(rownames(goGreater), GOTERM), function(go) go@Term)
-goGreater$Term <- goTermNames[rownames(goGreater)]
-goGreater
-
-#---------using clusterprofiler
-library("clusterProfiler")
-
-background_genes <- clusters[clusters$ClusterNumber !=1,]
-background_geneIDs <- rownames(agg)
-
-orgCPGO <- enrichGO(genesOfInterest, "org.Sc.sgd.db", keyType = "ENSEMBL", ont = "ALL", universe = background_geneIDs)
-orgCPGOdf <- as.data.frame(orgCPGO)
-orgCPGOdf
-
-```
-
-</br>
-
-
-### 14. Assessing clustering tendency
-
-```{r , cluster_assesment, echo=TRUE}
-
-# Hopkins statistic: If the value of Hopkins statistic is close to 1 (far above 0.5), 
-# then we can conclude that the dataset is significantly clusterable
-
-# Visual approach: The visual approach detects the clustering tendency by counting 
-# the number of square shaped dark (or colored) blocks along the diagonal in 
-# the ordered dissimilarity image.
-
-gradient.color <- list(low = "steelblue",  high = "white")
-
-# create a 5 x 5 inch png image
-png("Data/clustering_tendency_PASS.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)          
-normAgg %>% get_clust_tendency(n = nrow(normAgg)-1, gradient = gradient.color)
-
-dev.off()
-
-```
-
-</br>
-
-### 15. K-means Clustering
-
-```{r, kmeans, echo=TRUE}
-
-# determining the number of clusters (K) using NbClust package
-
-#val_K_clust <- NbClust(normAgg, min.nc=1, max.nc=100, method="kmeans")
-num_K_clust <- fviz_nbclust(normAgg, FUNcluster = kmeans, method = "wss", print.summary = TRUE)
-
-# K-means Clustering
-
-# As k-means clustering algorithm starts with k randomly selected centroids, it’s always recommended to use the set.seed() function in order to set a seed for R’s random number generator
-
-set.seed(123)
-km.res_100 <- kmeans(normAgg, 100, nstart = 25, iter.max = 50)
-
-png("Data/K_means_PASS.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-fviz_cluster(km.res_100, data = normAgg, geom="point")
-dev.off()
-
-```
-
-</br>
-
-### 16. Applying Function for K-means results
-
-?
-
-```{r,wtf, echo=TRUE}
-
-```
-
-
-</br>
 
 ### Session Information 
 
