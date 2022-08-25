@@ -16,7 +16,7 @@ output: html_document
 
 ### Prerequisite libraries
 
-```{r Libraries, echo=TRUE}
+```{r, Libraries, echo=TRUE}
 
 suppressPackageStartupMessages({
   library(R.utils)
@@ -53,7 +53,7 @@ orgMetadataPass <- readRDS("orgMetadataPass.rds")
 
 ### 5. Aggregate the SRR run data to SRX experiment (ok)
 
-```{r SRR to SRX Aggregation, echo=TRUE}
+```{r, SRR_SRX_Aggregation, echo=TRUE}
 
 # Download and read Metadata summary
 
@@ -123,7 +123,7 @@ remove(orgMetadata)
 
 ### 6. Normalisation of Data (ok)
 
-```{r eval=FALSE, include=FALSE}
+```{r, norm}
 
 # NORMALISATION FOR LIBRARY SIZE BIAS (cpm)
 cpm <- cpm(agg)
@@ -176,10 +176,10 @@ all(apply(apply(normAgg, 2, function(x) x==0), 2, any))
 
 ### 8. Heirarchical Clustering with PASS only databases (ok)
 
-```{r echo=TRUE}
+```{r, heirarchical_cluster, echo=TRUE}
 
 # Applying Hierarchical Clustering after normalization
-distClust <-as.dist(1-cor(t(normAgg), method="spearman"))
+distClust <- as.dist(1-cor(t(normAgg), method="spearman"))
 hClust <- hclust(distClust , method="complete")
 
 # optimizing the cluster size
@@ -193,10 +193,11 @@ clusterCols <- P100[1:clusterPasslength]
 myClusterSideBar <- clusterCols[clusterPass]
 colfunc <- colorRampPalette(c("blue", "white", "red"))
 if (!file.exists("Data/org_se.tsv")){
-  write.table(cluster,file="Data/org_pass.txt",quote=F,sep="\t")}
+  write.table(clusterPass,file="Data/org_pass.txt",quote=F,sep="\t")}
 
 # create a 5 x 5 inch png image
-png("Data/org_heatmaps_PASS_normalization3.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)          
+png("Data/org_heatmaps_PASS_normalization3.png", 
+  width = 5*300, height = 5*300, res = 300, pointsize = 8)          
 
 # create the heatmap
 heatmap.2(normAgg, main="org PASS Samples",  Rowv=as.dendrogram(hClust),
@@ -209,39 +210,10 @@ dev.off()
 
 </br>
 
-### 9. Gene Ontology and Gene Data (ok)
-
-```{r, gene_ontologies}
-
-# biomart
-
-ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl",mirror="uswest")
-orgGOlong <- getBM(
-  attributes=c("ensembl_gene_id","go_id"), 
-  mart = ensembl)
-orgGOlong <- orgGOlong[which(orgGOlong$go_id !="" ),]
-# GO presence absence matrix
-# gene ids in first column
-# each row represents a gene (ENSG ID)
-# each column represents a GO term eg GO:000002
-orgGOmatrixwide <- cbind(orgGOlong[1], mtabulate(as.data.frame(t(orgGOlong[-1]))))
-
-# convert NA to Zero
-orgGOmatrixwide[is.na(orgGOmatrixwide)] <- 0
-
-# save the dataframe to an RDS file
-saveRDS(orgGOmatrixwide, "orgGOmatrixwideCWG.rds")
-head(orgGOmatrixwide)
-
-# Remove unneeded data
-remove(orgGOlong)
-
-```
-
-</br>
-
 ### 10. Blinding genes using random strings
-```{r}
+
+```{r, blinding}
+
 #Fraction of the total number of genes to be blinded
 fracBlind <- 0.10
 numGenes <- round(nrow(agg)*fracBlind)
@@ -267,9 +239,10 @@ rownames(aggRand)[indBlind] <- rand
 
 ### 11. Functions for Cluster Analysis 
 
-```{r echo=TRUE}
+```{r, funcs, echo=TRUE}
 
-# This function's output is a nested list with of the genes grouped per cluster and their corresponding correlation values. Inputs:
+# This function's output is a nested list with of the genes grouped per cluster and 
+# their corresponding correlation values. Inputs:
 # x = normAgg (normalized gene counts from RNA seq)
 # y = clusters (matrix of genes w/ cluster number)
 # clust_total = total number of clusters
@@ -277,8 +250,7 @@ rownames(aggRand)[indBlind] <- rand
 corrClust <- function(x, y, clust_total){
   corrClust <- list()
   for (i in 1:clust_total){
-    clusterX <- y[y$ClusterNumber == i,]
-    cluster_list <- as.list(clusterX$ensembl_gene_id)
+    cluster_list <- names(y)[which(y == i)]
     cluster <- x[rownames(x) %in% cluster_list,]
     corr_result <- cor(t(cluster))
     corrClust[[paste0("Cluster", i)]] <- corr_result
@@ -286,10 +258,11 @@ corrClust <- function(x, y, clust_total){
   return(corrClust)
 }
 
-corrAllClusters <- corrClust(normAgg, clusters, 100)
+corrAllClusters <- corrClust(normAgg, clusterPass, 100)
 
 
-# This function's output is a list of data frames containing all GO terms associated with the genes belonging to a cluster. Input:
+# This function's output is a list of data frames containing all GO terms 
+# associated with the genes belonging to a cluster. Input:
 # x = orgGOmatrixwide (matrix of genes belonging to a GO term)
 # y = clusters (matrix of genes w/ cluster number)
 # clust_total = total number of clusters
@@ -308,6 +281,7 @@ GOperClust <- function(x,y,clust_total){
   return(GOClust)
 }
 
+orgGOmatrixwide <- readRDS("orgGOmatrixwide.rds")
 GOallClusters <- GOperClust(orgGOmatrixwide, clusters, 100)
 saveRDS(GOallClusters,"GOallClusters.rds")
 
@@ -363,7 +337,7 @@ cluster1GO2 <- weightcorr2Clust(corrblind1, corrClustuster1, cluster1GO)
 
 ### 12. Cluster Analysis
 
-```{r}
+```{r, cluster_analysis}
 
 # Prepare Cluster data frame
 cluster <- as.data.frame(cluster)
@@ -454,10 +428,12 @@ Clust1neg <- inpClust1trim - cluster1inp
 which(Clust1neg == -1)
 
 ```
+
 </br>
 
 ### Using weightcorr2Clust
-```{r echo=TRUE}
+
+```{r, weight, echo=TRUE}
 
 cluster1GO2 <- weightcorr2Clust(corrblind1, corrCluster1, cluster1GO)
 
@@ -500,10 +476,12 @@ Clust1neg <- inpClust1trim - cluster1inp
 which(Clust1neg == -1)
 
 ```
+
 </br>
 
 ### Using cluster 3
-```{r echo=TRUE}
+
+```{r, cluster3, echo=TRUE}
 
 corrCluster3 <- corrAllClusters$Cluster3
 clust3GO <- GOallClusters$Cluster3
@@ -548,13 +526,16 @@ Clust3inpVSinp3 <- ifelse(cluster3inp == inpClust3trim, TRUE, FALSE)
 # Negative 1 values appear for threshold > 0.01
 Clust3neg <- inpClust3trim - cluster3inp
 which(Clust3neg == -1)
+
 ```
 
 </br>
 
 
 ### 13. Gene Enrichment Analysis 
-```{r echo=TRUE}
+
+```{r, enrich, echo=TRUE}
+
 # ---------Functional Enrichment Analysis using using goProfileR
 
 # Gene enrichment query
@@ -603,11 +584,8 @@ goTermNames <- lapply(mget(rownames(goGreater), GOTERM), function(go) go@Term)
 goGreater$Term <- goTermNames[rownames(goGreater)]
 goGreater
 
-
-
 #---------using clusterprofiler
 library("clusterProfiler")
-
 
 background_genes <- clusters[clusters$ClusterNumber !=1,]
 background_geneIDs <- rownames(agg)
@@ -615,6 +593,7 @@ background_geneIDs <- rownames(agg)
 orgCPGO <- enrichGO(genesOfInterest, "org.Sc.sgd.db", keyType = "ENSEMBL", ont = "ALL", universe = background_geneIDs)
 orgCPGOdf <- as.data.frame(orgCPGO)
 orgCPGOdf
+
 ```
 
 </br>
@@ -622,7 +601,7 @@ orgCPGOdf
 
 ### 14. Assessing clustering tendency
 
-```{r echo=TRUE}
+```{r , cluster_assesment, echo=TRUE}
 
 # Hopkins statistic: If the value of Hopkins statistic is close to 1 (far above 0.5), 
 # then we can conclude that the dataset is significantly clusterable
@@ -638,12 +617,15 @@ png("Data/clustering_tendency_PASS.png", width = 5*300, height = 5*300, res = 30
 normAgg %>% get_clust_tendency(n = nrow(normAgg)-1, gradient = gradient.color)
 
 dev.off()
+
 ```
+
 </br>
 
 ### 15. K-means Clustering
 
-```{r echo=TRUE}
+```{r, kmeans, echo=TRUE}
+
 # determining the number of clusters (K) using NbClust package
 
 #val_K_clust <- NbClust(normAgg, min.nc=1, max.nc=100, method="kmeans")
@@ -659,11 +641,16 @@ km.res_100 <- kmeans(normAgg, 100, nstart = 25, iter.max = 50)
 png("Data/K_means_PASS.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
 fviz_cluster(km.res_100, data = normAgg, geom="point")
 dev.off()
+
 ```
+
 </br>
 
 ### 16. Applying Function for K-means results
-```{r echo=TRUE}
+
+?
+
+```{r,wtf, echo=TRUE}
 
 ```
 
@@ -673,5 +660,7 @@ dev.off()
 ### Session Information 
 
 ```{r Session Info, echo=FALSE}
+
 sessionInfo()
+
 ```
