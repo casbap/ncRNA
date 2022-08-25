@@ -15,105 +15,44 @@ output: html_document
 
 
 ### Prerequisite libraries
+
 ```{r Libraries, echo=TRUE}
-suppressPackageStartupMessages({c(library(R.utils), library(dplyr), library(tidyr), 
-  library(data.table), library(RColorBrewer), library(gplots), library(Polychrome), 
-  library(edgeR), library(GO.db), library(gage), library(gProfileR), library(factoextra),
-  library(NbClust), library(org.Sc.sgd.db), library(stringi))
+
+suppressPackageStartupMessages({
+  library(R.utils)
+  library(dplyr)
+  library(tidyr)
+  library(data.table)
+  library(RColorBrewer)
+  library(gplots)
+  library(Polychrome)
+  library(edgeR)
+  library(GO.db)
+  library(gage)
+  library(gProfileR)
+  library(factoextra)
+  library(NbClust)
+#  library(org.Sc.sgd.db)
+  library(stringi)
+  library(biomaRt)
+  library(qdapTools)
 })
 
 ```
 </br>
 
-###  1. Download and unzip the data (ok)
-```{r Download Data, echo=FALSE}
-# put in an if statement to check if object exists
-
-if (!file.exists("Data/hsapiens_rand_se.tsv.bz2")){
-    download.file("http://ziemann-lab.net/public/cas/rand/hsapiens_rand_se.tsv.bz2", 
-              destfile = "Data/hsapiens_rand_se.tsv.bz2")}
-
-# fread error msg: This file is very unusual: it ends abruptly without a final newline, and also its size is a multiple of 4096 bytes. Please properly end the last row with a newline using for example 'echo >> file' to avoid this  time to copy. 
-
-# needed to go back to bunzip2
-if (!file.exists("Data/hsapiens_rand_se.tsv")){
-    bunzip2("Data/hsapiens_rand_se.tsv.bz2", destname="Data/hsapiens_rand_se.tsv")}
-
-orgData <- fread("Data/hsapiens_rand_se.tsv", sep = '\t', header = FALSE)
-
-head(orgData)
-```
-</br>
-
-### 2. Download, read, and unzip the QC data (ok)
-```{r QC Data, echo=FALSE}
-if (!file.exists("hsapiens_rand_qc.tsv.bz2")){
-    download.file("http://ziemann-lab.net/public/cas/rand/hsapiens_rand_qc.tsv.bz2", 
-              destfile = "hsapiens_rand_qc.tsv.bz2")}
-
-qcData <- fread("hsapiens_rand_qc.tsv.bz2", sep = '\t', 
-  col.names = c("Database", "Description", "Details"))
-
-head(qcData)
-```
-</br>
-
-### 3. Filter and quantify databases according to QC_SUMMARY = PASS. (ok)
-```{r QC Data Summary, echo=FALSE}
-
-# count the total number of QC_SUMMARY entries for checking
-qcSummary <- qcData[qcData$Description == 'QC_SUMMARY',]
-totalSummary <- nrow(qcSummary)
-
-# count the total number of databases marked as PASS
-qcPass <- filter(qcData, grepl("PASS", Details))
-totalPass <- nrow(qcPass)
-
-```
-</br>
-
-### 4. Select all the databases from org_se.tsv with QC_SUMMARY == 'PASS' (ok)
-```{r Filter yeast bulk data, echo=FALSE}
-
-# filter all the sample names with QC_SUMMARY == 'PASS' from step 3
-databasePass <- filter(qcData, grepl("PASS", Details)) 
-
-# convert the rows into string and store on a list to use for filtering Yeast data
-databasePassList <- as.list(as.character(databasePass$Database))
-
-# Filter Yeast data using generated list
-orgPass <- orgData[orgData$V1 %in% databasePassList,] 
-
-# Convert format from long to wide
-orgPassWide <- orgPass %>% pivot_wider(names_from = "V1", values_from = "V3")
-
-# Convert tibble to data frame and assign column 1 as rowname
-orgPassWide <- as.data.frame(orgPassWide)
-rownames(orgPassWide) <- orgPassWide[,1]
-orgPassWide <- orgPassWide[,-1]
-
-orgPassWide[1:10,1:6]
-
-```
-</br>
-
-
 ### 1. Load prerequisite files
+
 ```{r, load_files, echo=TRUE}
 
 # Load prerequisite objects from DataPrep stage [1]
-
-orgPassWide <- "orgPassWide.rds"
-read(orgPassWide)
-
-orgMetadataPass <- "orgMetadataPass.rds"
-read(orgMetadataPass)
-
-
+orgPassWide <- readRDS("orgPassWide.rds")
+orgMetadataPass <- readRDS("orgMetadataPass.rds")
 
 ```
 
 ### 5. Aggregate the SRR run data to SRX experiment (ok)
+
 ```{r SRR to SRX Aggregation, echo=TRUE}
 
 # Download and read Metadata summary
@@ -125,6 +64,7 @@ if (!file.exists("hsapiens_metadata.tsv.cut")){
 orgMetadata <- read.csv("hsapiens_metadata.tsv.cut", sep = '\t')
 
 # Filter metadata to include only "passed" samples
+databasePassList <- colnames(orgPassWide)
 orgMetadataPass <- orgMetadata[which(orgMetadata$SRR_accession %in% databasePassList),]
 
 # Assign column 1 as rownames 
@@ -178,11 +118,13 @@ dim(aggFilterRows)
 remove(orgMetadata)
 
 ```
+
 </br>
 
 ### 6. Normalisation of Data (ok)
 
 ```{r eval=FALSE, include=FALSE}
+
 # NORMALISATION FOR LIBRARY SIZE BIAS (cpm)
 cpm <- cpm(agg)
 # add a small number to the entire dataframe to account for zero reads
@@ -206,7 +148,10 @@ dim(keepCount)
 
 # Check whether our threshold of 0.6 does indeed correspond to a count of about 10-15
 # Add a vertical line at 0.6 CPM, and a horizontal line at Counts = 10
-plot(cpm[,1], agg[,1], ylim=c(0,50), xlim=c(0,3), abline(v=0.6, h=10, col="blue"), ylab = "Counts", xlab = "CPM", main = "Counts-per-million (CPM) vs Counts")
+plot(cpm[,1], agg[,1], ylim=c(0,50), xlim=c(0,3), 
+  abline(v=0.6, h=10, col="blue"), 
+  ylab = "Counts", xlab = "CPM", 
+  main = "Counts-per-million (CPM) vs Counts")
 
 # Convert counts to DGEList object (from edgeR library)
 dgeObj <- DGEList(keepCount)
@@ -226,10 +171,11 @@ hist(keepCount)
 all(apply(apply(normAgg, 2, function(x) x==0), 2, any))
 
 ```
+
 </br>
 
-
 ### 8. Heirarchical Clustering with PASS only databases (ok)
+
 ```{r echo=TRUE}
 
 # Applying Hierarchical Clustering after normalization
@@ -237,8 +183,8 @@ distClust <-as.dist(1-cor(t(normAgg), method="spearman"))
 hClust <- hclust(distClust , method="complete")
 
 # optimizing the cluster size
-clusterPass <- cutree(hClust, h=max(hr$height/1.64))
-clusterPasslength <- length(unique(cluster))
+clusterPass <- cutree(hClust, h=max(hClust$height/1.64))
+clusterPasslength <- length(unique(clusterPass))
 
 if (!exists("P100")){
   P100 <- createPalette(100,  c("#ff0000", "#00ff00", "#0000ff"))}
@@ -253,20 +199,23 @@ if (!file.exists("Data/org_se.tsv")){
 png("Data/org_heatmaps_PASS_normalization3.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)          
 
 # create the heatmap
-heatmap.2(normAgg, main="org PASS Samples",  Rowv=as.dendrogram(hr),
+heatmap.2(normAgg, main="org PASS Samples",  Rowv=as.dendrogram(hClust),
           dendrogram="both", scale="column", col = colfunc(25), trace="none", 
           RowSideColors= myClusterSideBar, margins = c(5,5))
 
 dev.off()
+
 ```
+
 </br>
 
-
-
 ### 9. Gene Ontology and Gene Data (ok)
+
 ```{r, gene_ontologies}
+
 # biomart
-ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+
+ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl",mirror="uswest")
 orgGOlong <- getBM(
   attributes=c("ensembl_gene_id","go_id"), 
   mart = ensembl)
@@ -288,8 +237,8 @@ head(orgGOmatrixwide)
 remove(orgGOlong)
 
 ```
-</br>
 
+</br>
 
 ### 10. Blinding genes using random strings
 ```{r}
@@ -313,10 +262,11 @@ indBlind <- which(rownames(aggRand) %in% blind)
 rownames(aggRand)[indBlind] <- rand
 
 ```
+
 </br>
 
-
 ### 11. Functions for Cluster Analysis 
+
 ```{r echo=TRUE}
 
 # This function's output is a nested list with of the genes grouped per cluster and their corresponding correlation values. Inputs:
@@ -359,7 +309,7 @@ GOperClust <- function(x,y,clust_total){
 }
 
 GOallClusters <- GOperClust(orgGOmatrixwide, clusters, 100)
-
+saveRDS(GOallClusters,"GOallClusters.rds")
 
 # This function's output is a nested list of genes belonging to a cluster with their corresponding weighted correlations. Input:
 # gene_list = list of genes to be correlated; corrClust = correlation values for cluster
@@ -407,14 +357,14 @@ weightcorr2Clust <- function(gene_list, corrClust, cl_GO){
 
 cluster1GO2 <- weightcorr2Clust(corrblind1, corrClustuster1, cluster1GO)
 
-
-
-
 ```
+
 </br>
 
 ### 12. Cluster Analysis
+
 ```{r}
+
 # Prepare Cluster data frame
 cluster <- as.data.frame(cluster)
 colnames(cluster) <- "ClusterNumber"
