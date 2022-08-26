@@ -170,6 +170,7 @@ saveRDS(normAggScale,"normAggScale.rds")
 correlate <- cor(t(normAggScale), method = "spearman")
 correlate[upper.tri(correlate,diag=TRUE)] <- NA
 
+#extract values and combine for large matrices
 if(nrow(correlate)>30000) {
   correlate1 <- correlate[1:30000,]
   correlate2 <- correlate[30001:nrow(correlate),]
