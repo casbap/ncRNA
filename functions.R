@@ -188,8 +188,7 @@ corr_per_clust <- function(x, y, clust_total){
 GO_per_cl <- function(x,y,clust_total){
   GO_cl <- list()
   for (i in 1:clust_total){
-    clusterX <- y[y$ClusterNumber == i,]
-    cluster_list <- as.list(clusterX$ensembl_gene_id)
+    cluster_list <- names(y[y == i])
     cluster_GOterms <- x[x$ensembl_gene_id %in% cluster_list,]
     rownames(cluster_GOterms)<- cluster_GOterms[,1] 
     cluster_GOterms[,1] <- c()
@@ -211,7 +210,7 @@ GO_per_cl_list <- function(x,clust_total){
   GO_names <- list()
   
   for (i in 1:clust_total){
-    input <- x[[i]]
+    input <- x[[i]][[1]]
     GO_list <- colnames(input)
     
     GO_names[[paste0("Cluster", i)]] <- GO_list

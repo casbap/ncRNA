@@ -264,6 +264,7 @@ corrClust <- function(x, y, clust_total){
 }
 
 corrAllClusters <- corrClust(normAgg, clusterPass, 100)
+saveRDS(corrAllClusters,"corrAllClusters.rds")
 remove(normAgg)
 
 ```
@@ -284,7 +285,7 @@ GOperClust <- function(x,y,clust_total){
     rownames(cluster_GOterms)<- cluster_GOterms[,1] 
     cluster_GOterms[,1] <- c()
     cluster_GOterms <- cluster_GOterms[,which(colSums(cluster_GOterms) > 0)]
-    GO_cl[[paste0("Cluster", i)]] <- cluster_GOterms
+    GOClust[[paste0("Cluster", i)]] <- cluster_GOterms
   }
   return(GOClust)
 }
@@ -293,33 +294,6 @@ orgGOmatrixwide <- readRDS("orgGOmatrixwide.rds")
 GOallClusters <- GOperClust(orgGOmatrixwide, clusterPass, 100)
 saveRDS(GOallClusters,"GOallClusters.rds")
 remove(orgGOmatrixwide)
-
-```{r, func3}
-
-# This function's output is a nested list of genes belonging to a cluster with their corresponding weighted correlations. Input:
-# gene_list = list of genes to be correlated; corrClust = correlation values for cluster
-# cl_GO = GO terms for cluster
-
-weightcorrClust <- function(gene_list, corrClust, cl_GO){
-  weightcorrClust <- list()
-  
-  for (i in gene_list){
-    corr_value <- corrClust[i,]
-    corr_value_df <- as.data.frame(corr_value)
-    weighted_go <- merge(corr_value_df, cl_GO, by = "row.names")
-    rownames(weighted_go) <- weighted_go[,1]
-    weighted_go[,1] <- c()
-    weighted_go <- weighted_go[,1]*weighted_go[,2:ncol(weighted_go)]
-    normalized_weighted_go <- colSums(weighted_go)/nrow(weighted_go)
-    weightcorrClust[[i]] <- normalized_weighted_go
-  }
-  setNames(weightcorrClust, paste0(i))
-  return(weightcorrClust)
-}
-
-cluster1GO <- weightcorrClust(corrblind1, corrClust1, cluster1GO)
-
-```
 
 ### Session Information 
 
