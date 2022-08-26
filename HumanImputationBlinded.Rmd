@@ -80,8 +80,6 @@ complete as linkage method during the clustering process.
 
 #cluster totals taken from cutClustvalues_dynamic variable and taken from 5-figure-summary
 
-#DYNAMIC SYSTEM to be created post-protyping stages - currently functions sub-par on local host
-
 #extract out sizes from previous work
 cl_list <- names(cutClustvalues_dynamic)
 cl_list <- cl_list[seq(1,length(cl_list),5)]

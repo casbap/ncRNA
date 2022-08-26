@@ -248,7 +248,7 @@ remove(agg)
 
 # This function's output is a nested list with of the genes grouped per cluster and 
 # their corresponding correlation values. Inputs:
-# x = normAgg (normalized gene counts from RNA seq)
+# x = normAgg (normalized gene counts from RNA seq [cpm])
 # y = clusters (matrix of genes w/ cluster number)
 # clust_total = total number of clusters
 

@@ -30,9 +30,9 @@ suppressPackageStartupMessages({
 # Save the logcounts_PASS.rds object from the data preparation step (orgDataPrep.Rmd)
 # Read the logcounts_PASS.rds object and use it in the code
 
-agg <- readRDS("normAggScale.rds")
+normAggScale <- readRDS("normAggScale.rds")
 # Hierarchical Clustering
-distClust <-as.dist(1-cor(t(agg), method="spearman"))
+distClust <-as.dist(1-cor(t(normAggScale), method="spearman"))
 hClust <- hclust(distClust , method="complete")
 # optimizing the cluster size
 clusterPass <- cutree(hClust, h=max(hClust$height/1.64))
