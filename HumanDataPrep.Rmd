@@ -200,6 +200,13 @@ linkage method fit.
 set.seed(42)
 distClust <-as.dist(1-cor(t(normAggScale), method="spearman"))
 hClust <- hclust(distClust , method="complete")
+
+#convert hClust to dataframe
+hClust <- as.data.frame(hClust, row.names = NULL, optional = FALSE, ...,
+              cut.names = FALSE, col.names = names(nHcust), fix.empty.names = TRUE,
+              stringsAsFactors = FALSE)
+head(hClust)
+
 # Check the correlation between the distance 
 # matrix and the cophenetic distance
 cophenetic.d = cophenetic(hClust)
