@@ -84,6 +84,8 @@ complete as linkage method during the clustering process.
 cl_list <- names(cutClustvalues_dynamic)
 cl_list <- cl_list[seq(1,length(cl_list),5)]
 
+if (length(cl_list ==0 ) ) {  stop("extraction error") }
+
 thresh_list <- c(0.1, 0.3, 0.5, 0.6)
 
 #sample k-fold validation
@@ -120,11 +122,11 @@ saveRDS(kfold_dynamic_sum, "kfold_dynamic_sum.rds")
 ```{r, vis1}
 
 # cut tree value vs Total Clusters – line diagram
-cuttree_totals_df <- function(cutClustvalues){
-  df <- as.data.frame(as.numeric(names(cutClustvalues)))
+cuttree_totals_df <- function(cutClustvalues_dynamic){
+  df <- as.data.frame(as.numeric(names(cutClustvalues_dynamic)))
   m <- list()
-  for (i in 1:length(cutClustvalues)){
-    x <- cutClustvalues[[i]][["Cut_value"]]
+  for (i in 1:length(cutClustvalues_dynamic)){
+    x <- cutClustvalues_dynamic[[i]][["Cut_value"]]
     m[[i]] <- x
   }
   df$CuttreeVal <- as.numeric(m)
@@ -144,12 +146,12 @@ cuttree_totals_df <- function(cutClustvalues){
   dev.off()
 }
 
-cuttree_totals_df(cutClustvalues)
+cuttree_totals_df(cutClustvalues_dynamic)
 
 # Total genes per cluster  – violin plot
 c_violin <- function(cutClustvalues){
 
-  clTotals <- do.call(rbind.data.frame, sapply(cutClustvalues, "[[", 3))
+  clTotals <- do.call(rbind.data.frame, sapply(cutClustvalues_dynamic, "[[", 3))
   clTotals$ClusterSize <- as.factor(as.numeric(str_extract_all(rownames(clTotals), "^[:digit:]*(?=.)")))
   clTotals$ClusterID <- as.numeric(str_extract_all(rownames(clTotals), "(?=.)\\d+$"))
   colnames(clTotals)[1] <- "TotalGenes"

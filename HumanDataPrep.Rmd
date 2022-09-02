@@ -71,7 +71,9 @@ head(qcData)
 ```{r, QC Data Summary, echo=TRUE}
 # Count the total number of qcSummary entries for checking
 qcSummary <- qcData[qcData$Description == 'qcSummary',]
+if ( nrow(qcSummary) > 0 ) {  stop("Quality check data not loaded accurately") }
 totalSummary <- nrow(qcSummary)
+
 # Count the total number of databases marked as PASS
 qcPass <- filter(qcData, grepl("PASS", Details))
 totalPass <- nrow(qcPass)
@@ -86,7 +88,7 @@ qualitySummary <- data.frame(totalPass, totalWarn, totalFail, totalSummary)
 qualitySummary
 ```
 
-### 4. Select all the databases from org_se.tsv with qcSummary == 'PASS' 
+### 4. Select all the databases from the quality control metrics data with qcSummary == 'PASS' 
 
 ```{r, Filter org bulk data, echo=TRUE}
 # Filter all the sample names with qcSummary == 'PASS' from step 3
@@ -103,6 +105,7 @@ orgPassWide <- as.data.frame(orgPassWide)
 rownames(orgPassWide) <- orgPassWide[,1]
 orgPassWide <- orgPassWide[,-1]
 orgPassWide[1:10,1:6]
+if ( nrow(orgPassWide) < 10 ) {  stop("Data too small") }
 saveRDS(orgPassWide, "orgPassWide.rds")
 # Remove unneeded data
 remove(orgPass)
@@ -142,6 +145,7 @@ no_gene_counts <- names(which(rowSums(agg) == 0))
 agg <- agg[!(rownames(agg) %in% no_gene_counts),]
 # Save agg object
 saveRDS(agg, "agg.rds")
+
 # Histogram showing samples (columns) counts
 hist(colSums(agg), breaks = 20)
 # Remove unneeded data
@@ -154,6 +158,8 @@ remove(orgMetadata)
 # Filtering low counts
 # Check if there are genes with no counts (rowSums==0)
 length(which(rowSums(agg) == 0)) # no rowSums = 0
+if (length(which(rowSums(agg) == 0)) > 0 ) {  stop("PASS data not normalised") }
+
 #NORMALISATION FOR COMPOSITION BIAS (TMM normalisation)
 dgeObj <- DGEList(agg)
 # Apply TMM normalisation to DGEList object
@@ -162,11 +168,10 @@ normAgg <- cpm(dgeObj)
 # Scale after normalisation
 normAggScale <- scale(normAgg)
 # Check distributions of samples
-hist(normAggScale)
+hist(normAggScale, breaks = 10)
 saveRDS(normAggScale,"normAggScale.rds")
 
 # Correlation Matrix
-# memory error - need to fix
 correlate <- cor(t(normAggScale), method = "spearman")
 correlate[upper.tri(correlate,diag=TRUE)] <- NA
 
@@ -190,6 +195,7 @@ dev.off()
 
 # Check for 0 values
 length(which(correlate_melt$value ==0 )) # no zero values
+if (length(which(correlate_melt$value ==0 )) > 0 ) {  stop("large matrix combination error") }
 ```
 
 ### 7a. Hierarchical Clustering: linking method
@@ -214,11 +220,6 @@ cophenetic.d = cophenetic(hClust)
 correlate_distClustVcoph <- cor(distClust, cophenetic.d)
 
 #form dendogram
-#ggplot(hClust, aes(A, B)) +
-#  geom_point()
-#ggsave("hClust.pdf")
-#ggsave("hClust.png")
-
 png("Data/dendro_Average.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
 dend <- as.dendrogram(hClust)
 #labels_colors(dend) <- "white"
@@ -229,7 +230,7 @@ dev.off()
 
 ### 7a.2 Data Removal
 
-Removes data functions for memory storage
+Removes data functions to improve memory storage
 
 ```{r, data_removal1, echo=FALSE}
 remove(cophenetic.d)
@@ -247,6 +248,7 @@ cutClust <- cutree(hClust, k=200)
 cutClustlength <- length(unique(cutClust))
 # Cluster size
 cutClustlength
+if (length(cutClustlength ==0 )) {  stop("cutree function could not find appropriate cluster lengths") }
 # This is the base code used in the cl_lengthCut function below
 clusters <- as.data.frame(cutClust)
 colnames(clusters) <- "ClusterNumber"
@@ -261,13 +263,12 @@ used in downstream processes.
 
 leave eval=FALSE, code runs with difficulty (requires manual cutHeight addition)
 
-
-
 ```{r, clustering1, eval=TRUE }
 # Different Cluster sizes using the normal dendrogram cutree function
 MAX = min(length(hClust$height),2000)
 cutClustvalues <- cl_lengthCut(hr=hClust, min=50, max=MAX, interval=2)
 saveRDS(cutClustvalues, "cutClustvalues.rds")
+
 # Different Cluster sizes using the dynamic method, cutreeHybrid from the dynamicTreeCut library
 cutClustvalues_dynamic <- cl_cut_dynamic(hr=hClust, cl=distClust, 
   min=4, max=302, interval=2)
@@ -289,12 +290,12 @@ clusterCols <- P100[1:100]
 colfunc <- colorRampPalette(c("blue", "white", "red"))
 
 # Heatmaps TMM
-#png("Data/hm_TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-#cutClustusterSideBar <- clusterCols[normAggScale[["cutClust"]]]
-#heatmap(correlate, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hr),
-#          dendrogram="both", scale="col", col = colfunc(25), trace="none",
-#          RowSideColors= cutClustusterSideBar, margins = c(5,5))
-#dev.off()
+png("Data/hm_TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+cutClusterSideBar <- clusterCols[normAggScale[["cutClustvalues"]]]
+heatmap(correlate, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hr),
+         dendrogram="both", scale="col", col = colfunc(25), trace="none",
+         RowSideColors= cutClustusterSideBar, margins = c(5,5))
+dev.off()
 ```
 
 ### Mem usage
