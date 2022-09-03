@@ -1,5 +1,5 @@
 ---
-title: "DataPrep"
+title: "GOPrep"
 author: "Cas Baptist"
 date: "3/7/2022"
 output: html_document
@@ -47,9 +47,7 @@ A binary matrix was constructed with the Entrez Gene IDs (NCBI gene IDs) as rown
 IDs as the column names (wide format).
 If a GO ID is associated with a Gene ID, the cell will equal to 1, otherwise it will be zero. 
 
-Location for downloads: http://current.geneontology.org/products/pages/downloads.html
-
-Will investigate using Ensembl BioMart.
+Gene ontologies downloaded from Ensembl BioMart with biomaRt package.
 
 ```{r, gene_ontol1}
 # biomart
@@ -58,15 +56,15 @@ orgGOlong <- getBM(
   attributes=c("ensembl_gene_id","go_id"), 
   mart = ensembl)
 orgGOlong <- orgGOlong[which(orgGOlong$go_id !="" ),]
-# GO presence absence matrix
-# gene ids in first column
-# each row represents a gene (ENSG ID)
+
+## GO presence absence matrix
+# gene ids in first column. each row represents a gene (ENSG ID)
 # each column represents a GO term eg GO:000002
 orgGOmatrixwide <- cbind(orgGOlong[1], mtabulate(as.data.frame(t(orgGOlong[-1]))))
-#aggregate it to shrink
+#aggregate to reduce database
 orgGOmatrixwide <- aggregate(. ~ ensembl_gene_id,orgGOmatrixwide,sum)
-# Save the dataframe to an RDS file
 saveRDS(orgGOmatrixwide, "orgGOmatrixwide.rds")
+
 # GeneIDs that are in the gene count data but not in the GO matrix
 agg <- readRDS("agg.rds")
 diffCountGO <- setdiff(rownames(agg), orgGOmatrixwide$ensembl_gene_id)
@@ -77,7 +75,7 @@ IndexRemoved <- which(orgGOmatrixwide$ensembl_gene_id %in% diffGOCount)
 GO_table <- orgGOmatrixwide
 GO_table <- GO_table[-IndexRemoved,]
 
-# the data structure is weird in that genes are shown as multiple rows
+# for consistency and memory usage
 dim(GO_table)
 head(rowSums(GO_table[,2:ncol(GO_table)]),50)
 
@@ -87,28 +85,32 @@ GO_table[1:10,1:6]
 
 # Save the new GO table
 saveRDS(GO_table, "GO_table.rds")
-# Remove unneeded data
-remove(orgGOlong)
 
 ```
 
 ### 11. Blind GO Terms (90-10 split)
 
 10 per cent of GeneIDs will have zero Gene Ontology Annotations. This will serve as the training data.
-After the model has been optimised, these IDs will be unblided as the testing data.
+After the model has been optimised, these IDs will be unblinded as the testing data.
 
 ```{r, blind_terms, echo=TRUE}
-#Fraction of the total number of genes to be blinded
+# Fraction of the total number of genes to be blinded
 test_size <- floor(0.10 * nrow(GO_table))
 ## set the seed to make your partition reproducible
 set.seed(42)
 blinded_ind <- sample(seq_len(nrow(GO_table)), size = test_size)
 GO_train <- GO_table
+
+# blinded aggregates from ontologies - training data
 GO_train[blinded_ind, 2:ncol(GO_train)] = 0
 GO_train <- aggregate(. ~ ensembl_gene_id,GO_train,sum)
 saveRDS(GO_train, "GO_train.rds")
+
+# blinded ontologies - testing data
 GO_test <- GO_table[blinded_ind,]
 saveRDS(GO_test, "GO_test.rds")
+
+# scaled aggregate - testing data
 normAggScale <- readRDS("normAggScale.rds")
 normAggScale_test <- normAggScale[rownames(normAggScale) %in% GO_test$ensembl_gene_id,]
 saveRDS(normAggScale_test, "normAggScale_test.rds")
@@ -118,6 +120,7 @@ saveRDS(normAggScale_test, "normAggScale_test.rds")
 
 ```{r, data_removal2, echo=FALSE}
 remove(orgData)
+remove(orgGOlong)
 ```
 
 ### Mem usage

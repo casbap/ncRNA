@@ -196,6 +196,12 @@ c_violin(cutClustvalues)
 
 ```
 
+### Mem usage
+
+```{r,memusage}
+sort( sapply( ls() , function(x) { object.size( get( x ) ) }  )  )
+```
+
 ### Session Information 
 
 ```{r Session Info, echo=FALSE}

@@ -210,6 +210,7 @@ if(nrow(correlate)>30000) {
 # Check for 0 values
 length(which(correlate_melt$value ==0 )) # no zero values
 if (length(which(correlate_melt$value ==0 )) > 0 ) {  stop("large matrix combination error") }
+saveRDS(correlate_melt, "correlate_melt")
 
 #Spearman Correlation of RNASeq Counts
 png("Data/hist_vds.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
@@ -231,7 +232,7 @@ hClust <- hclust(distClust , method="complete")
 
 #convert hClust to dataframe
 hClust <- as.data.frame(hClust, row.names = "Gene IDs", optional = FALSE,
-              cut.names = FALSE, col.names = "Runs (Metadata)", fix.empty.names = TRUE,
+              col.names = "Runs (Metadata)", fix.empty.names = TRUE,
               stringsAsFactors = default.stringsAsFactors())
 saveRDS(hClust, "hClust")
 head(hClust)
@@ -257,7 +258,8 @@ A specific number of clusters can be set using the cutree function; let k = chos
 # Using the argument k in cutree is a faster process vs figuring out the cut height
 cutClust <- cutree(hClust, k=200)
 cutClustlength <- length(unique(cutClust))
-# Cluster size
+saveRDS(cutClust, "cutClust")
+# Cluster size check statement
 cutClustlength
 if (length(cutClustlength ==0 )) {  stop("cutree function could not find appropriate cluster lengths") }
   
@@ -280,10 +282,6 @@ saveRDS(cutClustvalues, "cutClustvalues.rds")
 # Different Cluster sizes using the dynamic method, cutreeHybrid from the dynamicTreeCut library
 cutClustvalues_dynamic <- cl_cut_dynamic(hr=hClust, cl=distClust, min=4, max=302, interval=2)
 saveRDS(cutClustvalues_dynamic, "cutClustvalues_dynamic.rds")
-
-#ADDITIONAL OPTIMISATION TOOL IF REQUIRED - uncomment
-# clusterPass <- cutree(cutClustvalues, h=max(cutClustvalues$height/1.64))
-# clusterPasslength <- length(unique(clusterPass))
 
 head(cutClustvalues)
 head(cutClustvalues_dynamic)

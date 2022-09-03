@@ -39,11 +39,11 @@ source("functions.R")
 
 ```{r, loadrds}
 
-normAgg <- readRDS("normAggScale.rds")
-clusterPass <- readRDS("clusterPass.rds")
+normAggScaleScale <- readRDS("normAggScaleScale.rds")
+cutClust <- readRDS("cutClust.rds")
 GO_table <- readRDS("GO_table.rds")
-GOallClusters <-  readRDS("GOallClusters.rds")
-corrAllClusters <-  readRDS("corrAllClusters.rds")
+orgGOmatrixwide <-  readRDS("orgGOmatrixwide.rds")
+correlate_melt <-  readRDS("correlate_melt.rds")
 
 ```
 
@@ -52,10 +52,10 @@ corrAllClusters <-  readRDS("corrAllClusters.rds")
 ```{r, clustering}
 
 # Grouping genes by cluster (using cluster 1)
-cluster1_list <- names(clusterPass[clusterPass==1])
+cluster1_list <- names(cutClust[cutClust==1])
 
 # Correlation in Cluster 1  (Function counterpart: corrClust)
-cluster_1 <- normAgg[rownames(normAgg) %in% cluster1_list,]
+cluster_1 <- normAggScale[rownames(normAggScale) %in% cluster1_list,]
 corrClust1 <- cor(t(cluster_1))
 
 # GO terms for cluster 1 (Function counterpart: GOperClust)
@@ -143,26 +143,26 @@ clust_total = 10
 GO_table <- readRDS("GO_table.rds")
 
 GOterms_perCl <- GO_per_cl(x=GO_table,
-    y=clusterPass,
+    y=cutClust,
     clust_total = clust_total)
 
 cor_edge_list <- edge_list(corr_allCl=corrAllClusters,
     clust_total = clust_total)
 
-weightGOallClusters <- impute(GOterms_perCl= GOterms_perCl,
+weightorgGOmatrixwide <- impute(GOterms_perCl= GOterms_perCl,
     cor_edge_list = cor_edge_list  ,
-    cl_GOall = GOallClusters, 
+    cl_GOall = orgGOmatrixwide, 
     corr_clAll = corrAllClusters,
     clust_total = clust_total,
     thresh = 0.02)
 
-saveRDS(weightGOallClusters, "weightGOallClusters.rds")
+saveRDS(weightorgGOmatrixwide, "weightorgGOmatrixwide.rds")
 
 # Get the list of GO terms per cluster from the original db (before blinding) to
 # use as a reference for filtering the relevant GO terms per cluster.
 # This also makes sure that dimensions (number of columns) in all of the trials are equal.
-#GOtermsperClust <- GO_list_perCl(weightGOallClusters, 100)
-GOtermsperClust <- GO_per_cl_list(weightGOallClusters, clust_total)
+#GOtermsperClust <- GO_list_perCl(weightorgGOmatrixwide, 100)
+GOtermsperClust <- GO_per_cl_list(weightorgGOmatrixwide, clust_total)
 # Save the list of GO terms per cluster
 saveRDS(GOtermsperClust, "GOtermsperClust.rds")
 
@@ -172,18 +172,22 @@ saveRDS(GOtermsperClust, "GOtermsperClust.rds")
 
 ```{r,optimisation}
 
-# Different cluster sizes can produced through passing a list 
-# of numbers as denominators of hClust$height  
+# Different cluster sizes can produced through passing a list of numbers as denominators of hClust$height  
 
-# Determine min-max cut value through trial and error to get 20 to 2000 total clusters
+# Determine min-max cut value to get 20 to 2000 total clusters
 clusterVal <- cl_lengthCut(hr=hClust, min=1.297, max=3.378, interval=0.001)
 saveRDS(clusterVal, "clusterVal.rds")
 
 # Number of gene IDs with no GO IDs
-nullOnt <- setdiff(unique(rownames(normAgg)),unique(GO_table$ensembl_gene_id))
+nullOnt <- setdiff(unique(rownames(normAggScale)),unique(GO_table$ensembl_gene_id))
 length(nullOnt)
 ```
 
+### Mem usage
+
+```{r,memusage}
+sort( sapply( ls() , function(x) { object.size( get( x ) ) }  )  )
+```
 
 ### Session Information 
 
