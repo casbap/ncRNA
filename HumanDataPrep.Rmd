@@ -96,6 +96,7 @@ databasePass <- filter(qcData, grepl("PASS", Details))
 # Convert the rows into string and store on a list to use for filtering org data
 databasePassList <- as.character(databasePass$Database)
 str(databasePassList)
+saveRDS(databasePassList, "databasePassList")
 # Filter org data using generated list
 orgPass <- orgData[orgData$V1 %in% databasePassList,] 
 # Convert format from long to wide
@@ -107,18 +108,12 @@ orgPassWide <- orgPassWide[,-1]
 orgPassWide[1:10,1:6]
 if ( nrow(orgPassWide) < 10 ) {  stop("Data too small") }
 saveRDS(orgPassWide, "orgPassWide.rds")
-# Remove unneeded data
-remove(orgPass)
-remove(databasePass)
-remove(qcSummary)
-remove(totalSummary)
-remove(qcWarn)
-remove(totalWarn)
-remove(qcFail)
-remove(totalFail)
+
 ```
 
 ### 5. Aggregate multiple runs, if any, (SRR) to its corresponding experiment (SRX) with PASS only databases
+
+Ensure all chunks have been previously loaded, as srx_agg function requires the function.R source, multiple libraries, and databasePassList. 
 
 ```{r, SRR to SRX Aggregation, echo=TRUE}
 # Download and read Metadata summary
@@ -134,22 +129,40 @@ rownames(orgMetadataPass) <- orgMetadataPass[,1]
 orgMetadataPass <- orgMetadataPass[,-1]
 orgMetadataPass
 saveRDS(orgMetadataPass, "orgMetadataPass.rds")
+
 # Put the filtered org GeneCount data and the filtered metadata dataframes into a list
 orgCountMetadata <- list(GeneCounts = orgPassWide, MetadataSummary = orgMetadataPass)
+
 # Apply both dataframes to the function
 head(orgCountMetadata)
+
+#checks to see if databasePassList correctly saved to prevent memory usage issue during aggregation stage
+if(!exists("databasePassList") ){stop ("databasePassList not loaded, check previous chunk")}
+
 agg <- srx_agg(orgCountMetadata)
-# Remove genes with zero total counts 
-length(which(rowSums(agg) == 0)) # 83
+
+# Remove genes with zero or more total counts 
+length(which(rowSums(agg) == 0))
 no_gene_counts <- names(which(rowSums(agg) == 0))
+aggFilterRows <- agg[which(rowSums(agg) > 0), ]
 agg <- agg[!(rownames(agg) %in% no_gene_counts),]
+
+# Check for samples with zero total counts
+colSums(agg) == 0
+
+# Filtering samples with more than 1 million reads
+aggFilterCols <- agg[, which(colSums(agg) >= 1e6)]
+
+# Omit rows and columns with more than zero counts
+dim(agg)
+if ( nrow(agg) == 0 ) { stop("Aggregation failure - Zero count detected") }
+
 # Save agg object
 saveRDS(agg, "agg.rds")
 
 # Histogram showing samples (columns) counts
 hist(colSums(agg), breaks = 20)
-# Remove unneeded data
-remove(orgMetadata)
+
 ```
 
 ### 6. Normalisation of Data (with PASS only databases)
@@ -165,11 +178,17 @@ dgeObj <- DGEList(agg)
 # Apply TMM normalisation to DGEList object
 dgeObj <- calcNormFactors(dgeObj, method = "TMM") 
 normAgg <- cpm(dgeObj)
+
 # Scale after normalisation
 normAggScale <- scale(normAgg)
+
 # Check distributions of samples
 hist(normAggScale, breaks = 10)
 saveRDS(normAggScale,"normAggScale.rds")
+
+# Get log2 counts per million
+normAggLog <- cpm(dgeObj,log=TRUE)
+hist(normAggLog, breaks = 10)
 
 # Correlation Matrix
 correlate <- cor(t(normAggScale), method = "spearman")
@@ -188,19 +207,21 @@ if(nrow(correlate)>30000) {
   correlate_melt <- reshape2::melt(correlate, na.rm = TRUE)
 }
 
-png("Data/hist_vds.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-hist(correlate, breaks = 20, xlab = "Gene Correlation Values", 
-  main = "Spearman Correlation of RNASeq Counts")
-dev.off()
-
 # Check for 0 values
 length(which(correlate_melt$value ==0 )) # no zero values
 if (length(which(correlate_melt$value ==0 )) > 0 ) {  stop("large matrix combination error") }
+
+#Spearman Correlation of RNASeq Counts
+png("Data/hist_vds.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+hist(correlate_melt, breaks = 20, xlab = "Gene Correlation Values", 
+  main = "Spearman Correlation of RNASeq Counts")
+dev.off()
+
 ```
 
 ### 7a. Hierarchical Clustering: linking method
 
-There are different ways of deciding the distance of elements for them to be grouped into a cluster.The correlation between the distance matrix and the cophenetic distance is calculated to to ensure good
+There are different ways of deciding the distance of elements for them to be grouped into a cluster. The correlation between the distance matrix and the cophenetic distance is calculated to to ensure good
 linkage method fit. 
 
 ```{r, hierarchical_clustering, echo=TRUE}
@@ -209,38 +230,28 @@ distClust <-as.dist(1-cor(t(normAggScale), method="spearman"))
 hClust <- hclust(distClust , method="complete")
 
 #convert hClust to dataframe
-hClust <- as.data.frame(hClust, row.names = NULL, optional = FALSE, ...,
-              cut.names = FALSE, col.names = names(nHcust), fix.empty.names = TRUE,
-              stringsAsFactors = FALSE)
+hClust <- as.data.frame(hClust, row.names = "Gene IDs", optional = FALSE,
+              cut.names = FALSE, col.names = "Runs (Metadata)", fix.empty.names = TRUE,
+              stringsAsFactors = default.stringsAsFactors())
+saveRDS(hClust, "hClust")
 head(hClust)
 
-# Check the correlation between the distance 
-# matrix and the cophenetic distance
+# Check the correlation between the distance matrix and the cophenetic distance
 cophenetic.d = cophenetic(hClust)
 correlate_distClustVcoph <- cor(distClust, cophenetic.d)
 
-#form dendogram
+#form dendrogram
 png("Data/dendro_Average.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
 dend <- as.dendrogram(hClust)
-#labels_colors(dend) <- "white"
+labels_colors(dend) <- "white"
 plot(dend, main = paste0("Complete Method: Corr = ", signif(correlate_distClustVcoph)))
 print(dend)
 dev.off()
 ```
 
-### 7a.2 Data Removal
-
-Removes data functions to improve memory storage
-
-```{r, data_removal1, echo=FALSE}
-remove(cophenetic.d)
-remove(correlate_distClustVcoph)
-remove(dend)
-```
-
 ### 7b. Heirarchical Clustering: deciding the number of clusters
 
-A specific number of clusters can be set using the cutree function.
+A specific number of clusters can be set using the cutree function; let k = chosen cluster number.
 
 ```{r, heirarchical1, echo=TRUE}
 # Using the argument k in cutree is a faster process vs figuring out the cut height
@@ -249,10 +260,6 @@ cutClustlength <- length(unique(cutClust))
 # Cluster size
 cutClustlength
 if (length(cutClustlength ==0 )) {  stop("cutree function could not find appropriate cluster lengths") }
-# This is the base code used in the cl_lengthCut function below
-clusters <- as.data.frame(cutClust)
-colnames(clusters) <- "ClusterNumber"
-clusters$ensembl_gene_id <- rownames(clusters)
   
 ```
 
@@ -263,39 +270,65 @@ used in downstream processes.
 
 leave eval=FALSE, code runs with difficulty (requires manual cutHeight addition)
 
-```{r, clustering1, eval=TRUE }
+```{r, clustering1, eval=FALSE }
+
 # Different Cluster sizes using the normal dendrogram cutree function
 MAX = min(length(hClust$height),2000)
 cutClustvalues <- cl_lengthCut(hr=hClust, min=50, max=MAX, interval=2)
 saveRDS(cutClustvalues, "cutClustvalues.rds")
 
 # Different Cluster sizes using the dynamic method, cutreeHybrid from the dynamicTreeCut library
-cutClustvalues_dynamic <- cl_cut_dynamic(hr=hClust, cl=distClust, 
-  min=4, max=302, interval=2)
+cutClustvalues_dynamic <- cl_cut_dynamic(hr=hClust, cl=distClust, min=4, max=302, interval=2)
 saveRDS(cutClustvalues_dynamic, "cutClustvalues_dynamic.rds")
 
+#ADDITIONAL OPTIMISATION TOOL IF REQUIRED - uncomment
+# clusterPass <- cutree(cutClustvalues, h=max(cutClustvalues$height/1.64))
+# clusterPasslength <- length(unique(clusterPass))
+
+head(cutClustvalues)
 head(cutClustvalues_dynamic)
 ```
-
-
 ### 9. Heatmaps for the clusters
 
 ```{r, heatmaps1}
-# Visualizations
 
+# Visualisation parameters and colouring
 if (!exists("P100")){
-  P100 <- createPalette(100,  c("#ff0000", "#00ff00", "#0000ff"))}
-
-clusterCols <- P100[1:100]
-colfunc <- colorRampPalette(c("blue", "white", "red"))
+  P100 <- createPalette(100,  c("#yellow", "#orange", "#red"))}
+clusterCols <- P100[1:cutClustvalues_dynamic]
+colfunc <- colorRampPalette(c("darkgoldenrod2","darkorange2","darkred"))
 
 # Heatmaps TMM
-png("Data/hm_TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-cutClusterSideBar <- clusterCols[normAggScale[["cutClustvalues"]]]
-heatmap(correlate, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hr),
+png("Data/TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+cutClusterSideBar <- clusterCols[cutClustvalues_dynamic[["Cluster Values"]]]
+heatmap(correlate, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hClust),
          dendrogram="both", scale="col", col = colfunc(25), trace="none",
          RowSideColors= cutClustusterSideBar, margins = c(5,5))
+
 dev.off()
+
+```
+
+### Data Removal
+
+Removes data functions to improve memory storage for imputation stages
+
+```{r, data_removal, echo=FALSE}
+remove(cophenetic.d)
+remove(correlate_distClustVcoph)
+remove(dend)
+remove(orgPass)
+remove(databasePass)
+remove(qcSummary)
+remove(totalSummary)
+remove(qcWarn)
+remove(totalWarn)
+remove(qcFail)
+remove(totalFail)
+remove(orgMetadata)
+remove(databasePassList)
+remove(dgeObj)
+remove(distClust)
 ```
 
 ### Mem usage
