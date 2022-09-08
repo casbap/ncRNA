@@ -5,15 +5,11 @@ date: "4/5/2022"
 output: html_document
 ---
 
-</br>
+##### Imputation of testing data 
 
-***
+Testing data makes up 90% of all data from preparation and aggregation stages, and is imputed after blinded training stages to perform cluster analysis of all clusters. Each cluster is formed from grouped genes (by Gene IDs and Ontologies) 
 
-##### The following code imputes function on genes from Sacharromyces cerevisiae. 
-
-***
-
-</br>
+Visualisations may differ depending on the results of the training data (from ImputationBlinded). 
 
 ### Prerequisite libraries
 
@@ -44,8 +40,57 @@ cutClust <- readRDS("cutClust.rds")
 GO_table <- readRDS("GO_table.rds")
 orgGOmatrixwide <-  readRDS("orgGOmatrixwide.rds")
 correlate_melt <-  readRDS("correlate_melt.rds")
+hClust <- readRDS("hClust.rds")
 
 ```
+
+### 3. Imputation functions
+
+```{r,idk1, echo=TRUE, fig.width=8, fig.height=8}
+
+# A nested list of gene clusters containing the data generated for cluster analysis. 
+
+clust_total = 10
+
+GOterms_perCl <- GO_per_cl(x=orgGOmatrixwide,
+    y=cutClust,
+    clust_total = clust_total)
+
+cor_edge_list <- edge_list(corr_allCl=corrAllClusters,
+    clust_total = clust_total)
+
+weightorgGOmatrixwide <- impute(GOterms_perCl= GOterms_perCl,
+    cor_edge_list = cor_edge_list  ,
+    cl_GOall = orgGOmatrixwide, 
+    corr_clAll = corrAllClusters,
+    clust_total = clust_total,
+    thresh = 0.02)
+
+saveRDS(weightorgGOmatrixwide, "weightorgGOmatrixwide.rds")
+
+# Get the list of GO terms per cluster from the original db (before blinding) to use as a reference for filtering the relevant GO terms per cluster. This also makes sure that dimensions (number of columns) in all of the trials are equal.
+GOtermsperClust <- GO_per_cl_list(weightorgGOmatrixwide, clust_total)
+# Save the list of GO terms per cluster
+saveRDS(GOtermsperClust, "GOtermsperClust.rds")
+
+```
+
+### 4. Optimization of parameters
+
+```{r,optimisation}
+
+# Different cluster sizes can produced through passing a list of numbers as denominators of hClust$height  
+
+# Determine min-max cut value to get 20 to 2000 total clusters
+clusterVal <- cl_lengthCut(hr=hClust, min=1.297, max=3.378, interval=0.001)
+saveRDS(clusterVal, "clusterVal.rds")
+
+# Number of gene IDs with no GO IDs
+nullOnt <- setdiff(unique(rownames(normAggScale)),unique(GO_table$ensembl_gene_id))
+length(nullOnt)
+
+```
+
 
 ### 1. Cluster Analysis
 
@@ -130,57 +175,6 @@ heatmap.2(as.matrix(Clust1neg), main="org Cluster 1 GO Terms vs Imputed GO Terms
     scale="none", col = colfunc(25), trace="none", 
     margins = c(5,5))
 
-```
-
-### 3. Imputation functions
-
-```{r,idk1, echo=TRUE, fig.width=8, fig.height=8}
-
-# A nested list of gene clusters containing the data generated for cluster analysis. 
-
-clust_total = 10
-
-GO_table <- readRDS("GO_table.rds")
-
-GOterms_perCl <- GO_per_cl(x=GO_table,
-    y=cutClust,
-    clust_total = clust_total)
-
-cor_edge_list <- edge_list(corr_allCl=corrAllClusters,
-    clust_total = clust_total)
-
-weightorgGOmatrixwide <- impute(GOterms_perCl= GOterms_perCl,
-    cor_edge_list = cor_edge_list  ,
-    cl_GOall = orgGOmatrixwide, 
-    corr_clAll = corrAllClusters,
-    clust_total = clust_total,
-    thresh = 0.02)
-
-saveRDS(weightorgGOmatrixwide, "weightorgGOmatrixwide.rds")
-
-# Get the list of GO terms per cluster from the original db (before blinding) to
-# use as a reference for filtering the relevant GO terms per cluster.
-# This also makes sure that dimensions (number of columns) in all of the trials are equal.
-#GOtermsperClust <- GO_list_perCl(weightorgGOmatrixwide, 100)
-GOtermsperClust <- GO_per_cl_list(weightorgGOmatrixwide, clust_total)
-# Save the list of GO terms per cluster
-saveRDS(GOtermsperClust, "GOtermsperClust.rds")
-
-```
-
-### 4. Optimization of parameters
-
-```{r,optimisation}
-
-# Different cluster sizes can produced through passing a list of numbers as denominators of hClust$height  
-
-# Determine min-max cut value to get 20 to 2000 total clusters
-clusterVal <- cl_lengthCut(hr=hClust, min=1.297, max=3.378, interval=0.001)
-saveRDS(clusterVal, "clusterVal.rds")
-
-# Number of gene IDs with no GO IDs
-nullOnt <- setdiff(unique(rownames(normAggScale)),unique(GO_table$ensembl_gene_id))
-length(nullOnt)
 ```
 
 ### Mem usage

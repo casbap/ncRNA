@@ -1,8 +1,8 @@
 ### ------------- Data Prep 
 
-# Sequencing Run aggregate function
-# Note for Mark: kindly let me know how to cite this properly. 
-# This code was from your github. 
+# Sequencing Run aggregate function (srx_agg)
+# corresponds srr forms to its experiment, srx, for counts in Metadata 
+# used in DataPrep (chunk 5)
 
 srx_agg <- function(x,counts="GeneCounts") {
   IDX=which(names(x) %in% "GeneCounts")
@@ -21,79 +21,89 @@ srx_agg <- function(x,counts="GeneCounts") {
   SRX_dat
 }
 
-# This function's output is a list  grouped by total clusters 
-# which gives (1) a table of GeneIDs assigned to a cluster number, 
-# (2) the cutree denominator to achieve that total cluster, and
-# (3) the tally of the total Gene IDs belonging to a cluster number.
+
+# Cluster Length function (cl_lengthCut)
+# Output is a list grouped by total clusters which gives:
+#        (1) a table of GeneIDs assigned to a cluster number, 
+#        (2) the cutree denominator to achieve that total cluster, and
+#        (3) the tally of the total Gene IDs belonging to a cluster number.
 # Input:
-# hr = heirarchical clustering object
-# min and max = minimum and maximum value of the denominator used
-#               in the cutree function to determine total clusters
-# interval = intervals for the vector of values between min and max
-#               used as input for different cluster totals
+#        hr = hierarchical clustering object (hClust)
+#        min and max = minimum and maximum value of the denominator used
+#                      in the cutree function to determine total clusters
+#        interval = intervals for the vector of values between min and max
+#                   used as input for different cluster totals
+#
+# Used in DataPrep (Chunk 8) and Imputation (Chunk 1)
+
 
 cl_lengthCut <- function(hr, min, max, interval){
   
-  mycl_cuts <- list()
+  cutClust_cuts <- list()
   
   cut <- seq(from = min, to = max, by = interval)
   
   for (i in cut){
     
     # for complete method
-    #mycl <- cutree(hr, h=max(hr$height/i))
+    cutClust <- cutree(hr, h=max(hr$height/i))
     #for ave linking method
-    mycl <- cutree(hr, k=i)
-    mycl_length <- length(unique(mycl))
+    cutClust <- cutree(hr, k=i)
+    cutClust_length <- length(unique(cutClust))
     
     # Prepare Cluster data frame
-    clusters <- as.data.frame(mycl)
-    colnames(clusters) <- "ClusterNumber"
-    clusters$ensembl_gene_id <- rownames(clusters)
+    cutClust <- as.data.frame(cutClust)
+    colnames(cutClust) <- "ClusterNumber"
+    cutClust$ensembl_gene_id <- rownames(cutClust)
     
     # Tally the total GeneIDs assigned per cluster
-    a <- as.numeric(mycl_length)
+    a <- as.numeric(cutClust_length)
     tally <- list()
     for (j in 1:a) {
       
-      tot <- length(which(clusters$ClusterNumber == j))
+      tot <- length(which(cutClust$ClusterNumber == j))
       tally[[j]] <- tot
     }
     
     tallyDF <- t(as.data.frame(tally))
     rownames(tallyDF) <- c(1:a)
     
-    mycl_cuts[[paste0(mycl_length)]][[paste0("GeneID_assignments")]] <- clusters
-    mycl_cuts[[paste0(mycl_length)]][[paste0("Cut_value")]] <- i
-    mycl_cuts[[paste0(mycl_length)]][["Tally"]] <- tallyDF
+    cutClust_cuts[[paste0(cutClust_length)]][[paste0("GeneID_assignments")]] <- cutClust
+    cutClust_cuts[[paste0(cutClust_length)]][[paste0("Cut_value")]] <- i
+    cutClust_cuts[[paste0(cutClust_length)]][["Tally"]] <- tallyDF
   }
-  return(mycl_cuts)
+  return(cutClust_cuts)
 }
 
-# This function is an improvement for cl_lengthCut().
-# It uses the cutreeHybrid() from the dynamicTreeCut library
-# to iterative cut a dendrogram based on a minimum cluster size.
-# The output is a list  grouped by total clusters 
-# which gives (1) a table of GeneIDs assigned to a cluster number, 
-# (2) the cutree denominator to achieve that total cluster, and
-# (3) the tally of the total Gene IDs belonging to a cluster number.
+# cl_cut_dynamic - an improvement for cl_lengthCut.
+# It uses cutreeHybrid() from the dynamicTreeCut library to iteratively cut a 
+# dendrogram based on a minimum cluster size.
+
+# Output:
+# list  grouped by total clusters which gives:
+#          (1) a table of GeneIDs assigned to a cluster number, 
+#          (2) the cutree denominator to achieve that total cluster, and
+#          (3) the tally of the total Gene IDs belonging to a cluster number.
+
 # Input:
-# hr = heirarchical clustering object
-# cl = distance matrix used to build hr
-# min and max = minimum and maximum value of the a sequence of values used
-#               in the minClusterSize attribute of the cutreeHybrid function 
-# interval = intervals for the sequence of values between min and max
+#          hr = hClust = hierarchical clustering object
+#          cl = distClust = distance matrix used to build hClust
+#          min and max = minimum and maximum value of the a sequence of values used
+#                        in the minClusterSize attribute of the cutreeHybrid function 
+#          interval = intervals for the sequence of values between min and max
+# 
+# Used in DataPrep (Chunk 8)
 
 cl_cut_dynamic <- function(hr, cl, min, max, interval){
   
-  mycl_cuts <- list()
+  cutClust_cuts <- list()
   
   cut <- seq(from = min, to = max, by = interval)
   
   for (i in cut){
     
     dyn_tree <- cutreeHybrid(
-      # Input data: basic tree cutiing
+      # Input data: basic tree cutting
       dendro=hr, distM=as.matrix(cl),
       # Branch cut criteria and options
       minClusterSize = i, deepSplit = 4,
@@ -103,66 +113,38 @@ cl_cut_dynamic <- function(hr, cl, min, max, interval){
       # Various options
       verbose = 1, indent = 0)
     
-    dyn_cl <- as.data.frame(dyn_tree$labels)
-    colnames(dyn_cl) <- "ClusterNumber"
-    dyn_cl$ensembl_gene_id <- hr$labels
+    dyn_clust <- as.data.frame(dyn_tree$labels)
+    colnames(dyn_clust) <- "ClusterNumber"
+    dyn_clust$ensembl_gene_id <- hr$labels
     
     # Tally the total GeneIDs assigned per cluster
-    mycl_length <- length(unique(dyn_tree$labels))
+    cutClust_length <- length(unique(dyn_tree$labels))
     tally <- list()
-    for (j in 1:mycl_length) {
-      tot <- length(which(dyn_cl$ClusterNumber == j))
+    for (j in 1:cutClust_length) {
+      tot <- length(which(dyn_clust$ClusterNumber == j))
       tally[[j]] <- tot
     }
     
     tallyDF <- t(as.data.frame(tally))
-    rownames(tallyDF) <- c(1:mycl_length)
+    rownames(tallyDF) <- c(1:cutClust_length)
     
     
-    mycl_cuts[[paste0(mycl_length)]][[paste0("GeneID_assignments")]] <- dyn_cl
-    mycl_cuts[[paste0(mycl_length)]][[paste0("min_cl_size")]] <- i
-    mycl_cuts[[paste0(mycl_length)]][["Tally"]] <- tallyDF
+    cutClust_cuts[[paste0(cutClust_length)]][[paste0("GeneID_assignments")]] <- dyn_clust
+    cutClust_cuts[[paste0(cutClust_length)]][[paste0("min_cl_size")]] <- i
+    cutClust_cuts[[paste0(cutClust_length)]][["Tally"]] <- tallyDF
   }
-  return(mycl_cuts)
+  return(cutClust_cuts)
 }
 
 
-# This function's output is a list that contains a dataframe with 
-# the pair of genes that makes up an edge (listed from and to)
-# with a corresponding correlation value treated as the edge 
-# weight. This list is created using the igraph library
-# Input:
-# corr_allCl = a list of correlation matrices per cluster
-# clust_total = total number of clusters
+### ------------- Imputation functions
 
-edge_list <- function(corr_allCl, clust_total){
-  e_list <- list()
-  
-  for(y in 1:as.numeric(clust_total)){
-    print(y)
-    e_list[[paste0("Cluster", y)]] <- 0
-    if ( length(as.vector(corr_allCl[[y]])) > 1 ) {
-      # Create igraph object
-      cor_g <- graph_from_adjacency_matrix(corr_allCl[[y]], 
-          mode='directed', weighted = 'correlation', 
-          diag = TRUE)
-      # Extract edge list
-      cor_edge_list <- get.data.frame(cor_g, 'edges')
-    
-      e_list[[paste0("Cluster", y)]] <- cor_edge_list
-    }
-  }
-  return(e_list)
-}
-
-
-### ------------- Cluster Analysis
 
 # This function's output is a nested list of the genes grouped 
 # per cluster and their corresponding correlation values. 
 # Inputs:
-# x = counts (normalized gene counts from RNA seq)
-# y = clusters (matrix of genes w/ cluster number)
+# x = normAggScale (normalized gene counts from RNA seq)
+# y = cutClust (matrix of genes w/ cluster number)
 # clust_total = total number of clusters
 
 corr_per_clust <- function(x, y, clust_total){
@@ -181,8 +163,8 @@ corr_per_clust <- function(x, y, clust_total){
 # This function's output is a list of data frames containing all 
 # GO terms associated with the genes belonging to a particular cluster. 
 # Input:
-# x = scerevisiae_GO_matrix_wide (matrix of genes belonging to a GO term)
-# y = clusters (matrix of genes w/ cluster number)
+# x = orgGOmatrixwide (matrix of genes belonging to a GO term)
+# y = cutClust (matrix of genes w/ cluster number)
 # clust_total = total number of clusters
 
 GO_per_cl <- function(x,y,clust_total){
@@ -225,7 +207,7 @@ GO_per_cl_list <- function(x,clust_total){
 # to a cluster. 
 # Input:
 # x = Annotation matrix after blinding
-# y = clusters (matrix of genes w/ cluster number)
+# y = cutClust (matrix of genes w/ cluster number)
 # GO_list_perCl = a nested list object containing the GO terms (column names)
 #               of the original db (before blinding) in each cluster
 # clust_total = total number of clusters
@@ -245,7 +227,28 @@ GO_per_cl_blinded <- function(x,y,GO_list_perCl,clust_total){
 }
 
 
-### ------------- Imputation functions
+# This function's output is a list that contains a dataframe with 
+# the pair of genes that makes up an edge (listed from and to)
+# with a corresponding correlation value treated as the edge 
+# weight. This list is created using the igraph library
+# Input:
+# corr_allCl = a list of correlation matrices per cluster
+# clust_total = total number of clusters
+
+edge_list <- function(corr_allCl, clust_total){
+  e_list <- list()
+  
+  for(i in 1:clust_total){
+    # Create igraph object
+    cor_g <- graph_from_adjacency_matrix(corr_allCl[[i]], mode='directed', weighted = 'correlation', 
+                                         diag = TRUE)
+    # Extract edge list
+    cor_edge_list <- get.data.frame(cor_g, 'edges')
+    
+    e_list[[paste0("Cluster", i)]] <- cor_edge_list
+  }
+  return(e_list)
+}
 
 # This function's output is a nested list of genes belonging to a 
 # cluster with a tally of how many correlation values passed the threshold
@@ -494,7 +497,7 @@ stats_all <- function(stats_cl){
 # Input
 # n = number of folds
 # GO_annot = original GO annotation matrix
-# clusters = matrix of genes w/ cluster number
+# cutClust = matrix of genes w/ cluster number
 # GOterms_perCl = GO terms per cluster from GO_per_cl()
 # GO_list_perCl = a nested list object containing the GO 
 #               terms (column names) of the original db
@@ -503,7 +506,7 @@ stats_all <- function(stats_cl){
 # clust_total = total number of clusters
 # thresh = threshold value from 0 to 1
 
-cross_val <- function(n, GO_annot, clusters, GOterms_perCl,
+cross_val <- function(n, GO_annot, cutClust, GOterms_perCl,
                       GO_list_perCl, corr_clAll,
                       clust_total, thresh){
   
@@ -526,11 +529,11 @@ cross_val <- function(n, GO_annot, clusters, GOterms_perCl,
     
     # Get the GO terms by cluster using the blinded data 
     # and the GO list per cluster
-    GO_blindedCl <- GO_per_cl_blinded(GO_blinded, clusters, 
+    GO_blindedCl <- GO_per_cl_blinded(GO_blinded, cutClust, 
                                       GO_list_perCl, clust_total)
     
     # Get the edge list per cluster
-    cor_edge_list <- edge_list(corr_allCl=corr_clAll, clust_total)
+    cor_edge_list <- edge_list(correlate=corr_clAll, clust_total)
     
     # Impute function
     wGO_blinded <- impute(GOterms_perCl=GOterms_perCl, 
@@ -639,7 +642,7 @@ optimise_impute <- function(cl_list, thresh_list, cuttree_values, counts, GO_ann
       GOterms_perCl <- GO_per_cl(GO_table, cl, i)
       GO_list_perCl <- GO_per_cl_list(GOterms_perCl, i)
       
-      sc <- cross_val(n=10, GO_annot=GO_annot, clusters=cl,
+      sc <- cross_val(n=10, GO_annot=GO_annot, cutClust=cl,
                       GOterms_perCl=GOterms_perCl,
                       GO_list_perCl=GO_list_perCl,
                       corr_clAll=corr_clAll,
@@ -669,7 +672,7 @@ cross_val_thresh <- function(interval){
     
     kfold <- cross_val(n=10, GO_annot=GO_table, clusters=cluster20,
                        GO_list_perCl=GOterms_perCl, 
-                       corr_clAll=corr_allClusters,
+                       corr_clAll=correlateusters,
                        wGO_allClusters=wGO_allClusters,
                        clust_total=20, thresh= i)
     

@@ -139,6 +139,7 @@ head(orgCountMetadata)
 #checks to see if databasePassList correctly saved to prevent memory usage issue during aggregation stage
 if(!exists("databasePassList") ){stop ("databasePassList not loaded, check previous chunk")}
 
+# Aggregation stage with srx_agg function
 agg <- srx_agg(orgCountMetadata)
 
 # Remove genes with zero or more total counts 
@@ -276,7 +277,7 @@ leave eval=FALSE, code runs with difficulty (requires manual cutHeight addition)
 
 # Different Cluster sizes using the normal dendrogram cutree function
 MAX = min(length(hClust$height),2000)
-cutClustvalues <- cl_lengthCut(hr=hClust, min=50, max=MAX, interval=2)
+cutClustvalues <- cl_lengthCut(hr=hClust, cl=distClust, min=50, max=MAX, interval=2)
 saveRDS(cutClustvalues, "cutClustvalues.rds")
 
 # Different Cluster sizes using the dynamic method, cutreeHybrid from the dynamicTreeCut library

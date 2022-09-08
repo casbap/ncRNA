@@ -5,12 +5,10 @@ date: "3/22/2022"
 output: html_document
 ---
 
-***
+##### Imputation of training data as extracted from DataPrep stage. 
 
-##### INTRO
-***
+Training data makes up a randomised 10% of all data from preparation and aggregation stages, and is imputed to predict total cluster values and distances. Visualisations will differ depending on the 10% of data taken from DataPrep, but should be a statistically significant result when training from a large datatset. 
 
-</br>
 
 ### Prerequisite libraries
 
@@ -29,7 +27,7 @@ suppressPackageStartupMessages({
     library(reshape2)
     library(tools)
     library(igraph)
-    library("purrr")
+    library(purrr)
     library(stringr)
 })
 
@@ -70,9 +68,7 @@ cutClustvalues <- readRDS(cutClustvalues)
 
 ### 1. Coarse Sweep for Spearman + complete linkage 
 
-The following code will perform a K-fold validation for the imputation 
-process which uses Spearman method to measure the distance matrix and 
-complete as linkage method during the clustering process. 
+The following code will perform a K-fold validation for the imputation process which uses Spearman method to measure the distance matrix and complete as linkage method during the clustering process. 
 
 ```{r, coarsesweep1}
 
