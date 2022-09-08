@@ -35,10 +35,11 @@ source("functions.R")
 
 ```{r, loadrds}
 
-normAggScaleScale <- readRDS("normAggScaleScale.rds")
+normAggScale <- readRDS("normAggScale.rds")
+normAggLog <- readRDS("normAggLog.rds")
 cutClust <- readRDS("cutClust.rds")
 GO_table <- readRDS("GO_table.rds")
-orgGOmatrixwide <-  readRDS("orgGOmatrixwide.rds")
+##orgGOmatrixwide <-  readRDS("orgGOmatrixwide.rds") 
 correlate_melt <-  readRDS("correlate_melt.rds")
 hClust <- readRDS("hClust.rds")
 
@@ -50,9 +51,11 @@ hClust <- readRDS("hClust.rds")
 
 # A nested list of gene clusters containing the data generated for cluster analysis. 
 
-clust_total = 10
+clust_total = ###
 
-GOterms_perCl <- GO_per_cl(x=orgGOmatrixwide,
+corr_allClusters <- corr_per_clust(normAggLog, cutClust, clust_total)
+
+GOterms_perCl <- GO_per_cl(x=GO_table,
     y=cutClust,
     clust_total = clust_total)
 

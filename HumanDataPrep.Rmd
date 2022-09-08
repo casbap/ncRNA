@@ -187,9 +187,17 @@ normAggScale <- scale(normAgg)
 hist(normAggScale, breaks = 10)
 saveRDS(normAggScale,"normAggScale.rds")
 
-# Get log2 counts per million
+# Get, and convert to log2 counts per million
 normAggLog <- cpm(dgeObj,log=TRUE)
 hist(normAggLog, breaks = 10)
+saveRDS(normAggLog,"normAggLog.rds")
+
+
+```
+
+### 6b. Correlation matrix creation
+
+``` {r, Correlate}
 
 # Correlation Matrix
 correlate <- cor(t(normAggScale), method = "spearman")
@@ -211,10 +219,11 @@ if(nrow(correlate)>30000) {
 # Check for 0 values
 length(which(correlate_melt$value ==0 )) # no zero values
 if (length(which(correlate_melt$value ==0 )) > 0 ) {  stop("large matrix combination error") }
+head(correlate_melt)
 saveRDS(correlate_melt, "correlate_melt")
 
 #Spearman Correlation of RNASeq Counts
-png("Data/hist_vds.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+png("Data/hist_correlation1.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
 hist(correlate_melt, breaks = 20, xlab = "Gene Correlation Values", 
   main = "Spearman Correlation of RNASeq Counts")
 dev.off()
@@ -238,15 +247,15 @@ hClust <- as.data.frame(hClust, row.names = "Gene IDs", optional = FALSE,
 saveRDS(hClust, "hClust")
 head(hClust)
 
-# Check the correlation between the distance matrix and the cophenetic distance
+# Check the correlation between the distance matrix and the cophenetic distance [test case]
 cophenetic.d = cophenetic(hClust)
 correlate_distClustVcoph <- cor(distClust, cophenetic.d)
 
 #form dendrogram
 png("Data/dendro_Average.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-dend <- as.dendrogram(hClust)
-labels_colors(dend) <- "white"
-plot(dend, main = paste0("Complete Method: Corr = ", signif(correlate_distClustVcoph)))
+  dend <- as.dendrogram(hClust)
+  labels_colors(dend) <- "white"
+  plot(dend, main = paste0("Complete Method: Corr = ", signif(correlate_distClustVcoph)))
 print(dend)
 dev.off()
 ```
@@ -256,10 +265,13 @@ dev.off()
 A specific number of clusters can be set using the cutree function; let k = chosen cluster number.
 
 ```{r, heirarchical1, echo=TRUE}
+
+# 
 # Using the argument k in cutree is a faster process vs figuring out the cut height
 cutClust <- cutree(hClust, k=200)
 cutClustlength <- length(unique(cutClust))
 saveRDS(cutClust, "cutClust")
+
 # Cluster size check statement
 cutClustlength
 if (length(cutClustlength ==0 )) {  stop("cutree function could not find appropriate cluster lengths") }
@@ -271,22 +283,16 @@ if (length(cutClustlength ==0 )) {  stop("cutree function could not find appropr
 This functions will will yield a list of genes grouped in cluster sized of 50 to 2000 to be 
 used in downstream processes.
 
-leave eval=FALSE, code runs with difficulty (requires manual cutHeight addition)
+leave eval=FALSE otherwise chunk requires manual cutHeight addition
 
 ```{r, clustering1, eval=FALSE }
-
-# Different Cluster sizes using the normal dendrogram cutree function
-MAX = min(length(hClust$height),2000)
-cutClustvalues <- cl_lengthCut(hr=hClust, cl=distClust, min=50, max=MAX, interval=2)
-saveRDS(cutClustvalues, "cutClustvalues.rds")
 
 # Different Cluster sizes using the dynamic method, cutreeHybrid from the dynamicTreeCut library
 cutClustvalues_dynamic <- cl_cut_dynamic(hr=hClust, cl=distClust, min=4, max=302, interval=2)
 saveRDS(cutClustvalues_dynamic, "cutClustvalues_dynamic.rds")
 
-head(cutClustvalues)
-head(cutClustvalues_dynamic)
 ```
+
 ### 9. Heatmaps for the clusters
 
 ```{r, heatmaps1}
@@ -297,10 +303,10 @@ if (!exists("P100")){
 clusterCols <- P100[1:cutClustvalues_dynamic]
 colfunc <- colorRampPalette(c("darkgoldenrod2","darkorange2","darkred"))
 
-# Heatmaps TMM
-png("Data/TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+# Heatmaps 
+png("Data/normalised_clusters.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
 cutClusterSideBar <- clusterCols[cutClustvalues_dynamic[["Cluster Values"]]]
-heatmap(correlate, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hClust),
+heatmap(correlate_melt, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hClust),
          dendrogram="both", scale="col", col = colfunc(25), trace="none",
          RowSideColors= cutClustusterSideBar, margins = c(5,5))
 

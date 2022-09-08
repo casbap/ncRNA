@@ -1,0 +1,156 @@
+---
+title: "Visualisations"
+author: "Cas Baptist"
+date: '2022-09-02'
+output: html_document
+---
+
+Additional visualisations for exploration // documentation - do not run Data Removal chunk in DataPrep.Rmd
+
+### Prerequisite Libraries
+
+```{r Libraries, echo=TRUE}
+
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(GGally)
+  library(dendextend)
+  library(data.table)
+  library(RColorBrewer)
+  library(gplots)
+}}
+
+```
+
+### Load prerequisite files
+
+```{r, load_files, echo=TRUE}
+cutClustvalues_dynamic <- readRDS("cutClustvalues_dynamic")
+normAggScale <- readRDS("normAggScale")
+correlate_distClustVcoph <- readRDS("correlate_distClustVcoph")
+hClust <- readRDS("hClust")
+
+
+```
+
+
+### Cluster Visualisations
+
+
+```{r, Clusters}
+
+# Dynamic cluster lengths
+# TMM normalisation // Spearman correlation
+
+if (!exists("P100")){
+  P100 <- createPalette(100,  c("#ffdb58", "#DAA520", "#8B0000"))}
+clusterCols <- P100[1:cutClustvalues_dynamic]
+colfunc <- colorRampPalette(c("mustard","goldenrod","darkred"))
+
+png("Data/TMM_sp.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+cutClusterSideBar <- clusterCols[cutClustvalues_dynamic[["Cluster Values"]]]
+heatmap(correlate, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hClust),
+         dendrogram="both", scale="col", col = colfunc(25), trace="none",
+         RowSideColors= cutClustusterSideBar, margins = c(5,5))
+dev.off()
+
+
+#Normalisaed PASS samples
+
+png("Data/heatmaps_PASSnormalised.png", 
+  width = 5*300, height = 5*300, res = 300, pointsize = 8)          
+
+heatmap.2(normAgg, main="org PASS Samples",  Rowv=as.dendrogram(hClust),
+          dendrogram="both", scale="column", col = colfunc(25), trace="none", 
+          RowSideColors= myClusterSideBar, margins = c(5,5))
+dev.off()
+
+
+#Cluster counts
+
+seeds_df_cl <- mutate(seeds_df, cluster = dend)
+count(seeds_df_cl,cluster)
+
+
+```
+
+### Dendogram
+
+
+```{r, dendograms_all}
+
+# Correlation vs. Cophenetic Distance 
+
+png("Data/dendro_average.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+dend <- as.dendrogram(hClust)
+dendcols <- color_branches(dend, h = 3)
+plot(dend, main = paste0("Complete Method: Corr = ", signif(correlate_distClustVcoph)))
+print(dend)
+dev.off()
+
+
+```
+
+### Histograms
+
+
+```{r, histograms_all}
+
+# Distributions of samples
+
+# create a 5 x 5 inch png image
+png("Data/hist_normAggScale.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+hist(normAggScale, breaks = 10)
+
+
+# log2 counts per million
+
+png("Data/hist_normAggLog.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+hist(normAggLog, breaks = 10)
+
+
+#Spearman Correlation of RNASeq Counts
+
+png("Data/hist_spcorr.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
+hist(correlate, breaks = 20, xlab = "Gene Correlation Values", 
+  main = "Spearman Correlation of RNASeq Counts")
+dev.off()
+
+```
+
+### Imputation
+
+
+```{r, imputation_graphs}
+
+colfunc <- colorRampPalette(c("white", "red"))
+
+# create heatmap for input matrix
+heatmap.2(as.matrix(input_mat), main="org Cluster 1 GO Terms", scale="none",
+    col = colfunc(25), trace="none", 
+    margins = c(5,5))
+
+# create heatmap for imputed df
+heatmap.2(as.matrix(impClust1df), main="org Cluster 1 Imputed GO Terms", 
+    scale="none", col = colfunc(25), trace="none", 
+    margins = c(5,5))
+
+# create heatmap for subtraction matrix
+heatmap.2(as.matrix(Clust1neg), main="org Cluster 1 GO Terms vs Imputed GO Terms", 
+    scale="none", col = colfunc(25), trace="none", 
+    margins = c(5,5))
+
+```
+
+# Further Exploration
+
+```{r, exploratoray_graphs}
+
+# Create data
+data <- data.frame( var1 = 1:100 + rnorm(100,sd=20), v2 = 1:100 + rnorm(100,sd=27), v3 = rep(1, 100) + rnorm(100, sd = 1))
+data$v4 = data$var1 ** 2
+data$v5 = -(data$var1 ** 2)
+
+# Check correlations (as scatterplots), distribution and print correlation coefficient
+ggpairs(data, title="correlogram with ggpairs()")
+dev.off()

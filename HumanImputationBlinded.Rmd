@@ -41,28 +41,26 @@ source("functions.R")
 
 ```{r, load1}
 
-normAggScale <- "normAggScale.rds"
-GO_table <-"GO_table.rds"
-GO_train <- "GO_train.rds"
-cutClustvalues <- "cutClustvalues.rds"
-cutClustvalues_dynamic <- "cutClustvalues_dynamic.rds"
+#Download data [temporary - only uncomment if DataPrep Chunk 7b not functioning due to memory issue]
+# if downloading data, need to follow dynamic process from DataPrep (set below)
 
-#Download data [temporary - only uncomment if DataPrep not functioning due to memory issue]
 # # if statement checks if object exists
 # if (!file.exists("Data/cutClustvalues")){
 #     download.file("https://ziemann-lab.net/public/ncRNA/cutClustvalues.rds", 
 #               destfile = "Data/cutClustvalues")}
 # cutClustvalues <- fread("Data/cutClustvalues")
 
-# Normalised, aggregated, and scaled RNASeq counts
-normAggScale <- readRDS(normAggScale)
-# Binary df for GO annotations 
-GO_table <- readRDS(GO_table)
-# From GO_table, selected randomly as training data
-GO_train <- readRDS(GO_train)
-# List of genes grouped in different cluster sizes
-cutClustvalues_dynamic <- readRDS(cutClustvalues_dynamic)
-cutClustvalues <- readRDS(cutClustvalues)
+
+
+# Normalised, aggregated, and scaled RNASeq counts - taken from DataPrep
+normAggScale <- readRDS("normAggScale")
+normAggLog <- readRDS("normAggLog")
+# Binary dataframe for GO annotations - taken from GOPrep
+GO_table <- readRDS("GO_table")
+# From GO_table, selected randomly as training data - taken from GOPrep
+GO_train <- readRDS("GO_train")
+# List of genes grouped in different cluster sizes - taken from DataPrep
+cutClustvalues_dynamic <- readRDS("cutClustvalues_dynamic")
 
 ```
 
@@ -73,8 +71,8 @@ The following code will perform a K-fold validation for the imputation process w
 ```{r, coarsesweep1}
 
 # Coarse sweep of the following parameters: cluster total(taken from cluster cuts and aggregates) and thresholds (0.1 to 0.9, variable). 
-#The length in cl_list is the minumum cluster size used in the dynamic tree cut. These values are saved in the cutClustvalues_dynamic variable. 
-#cluster totals taken from cutClustvalues_dynamic variable and optimised
+#The length in cl_list is the minimum cluster size used in the dynamic tree cut. These values are saved in the cutClustvalues_dynamic variable. 
+#cluster totals are taken from cutClustvalues_dynamic variable and optimised
 
 #extract out sizes from previous work
 cl_list <- names(cutClustvalues_dynamic)
