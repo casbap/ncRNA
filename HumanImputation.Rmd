@@ -11,7 +11,7 @@ Testing data makes up 90% of all data from preparation and aggregation stages, a
 
 Visualisations may differ depending on the results of the training data (from ImputationBlinded). 
 
-### Prerequisite libraries
+### Load Prerequisite libraries
 
 ```{r, libraries, echo=TRUE}
 
@@ -31,71 +31,77 @@ source("functions.R")
 
 ```
 
-### Load Pre-requisite RDS files 
+### 1. Load Pre-requisite RDS files 
 
 ```{r, loadrds}
 
-normAggScale <- readRDS("normAggScale.rds")
+##normAggScale_test <- readRDS("normAggScale_test.rds")
 normAggLog <- readRDS("normAggLog.rds")
 cutClust <- readRDS("cutClust.rds")
-GO_table <- readRDS("GO_table.rds")
-##orgGOmatrixwide <-  readRDS("orgGOmatrixwide.rds") 
+GO_test <- readRDS("GO_test.rds")
 correlate_melt <-  readRDS("correlate_melt.rds")
 hClust <- readRDS("hClust.rds")
+cutClustvalues_dynamic <- readRDS("cutClustvalues_dynamic.rds")
 
 ```
 
-### 3. Imputation functions
+### 2. Imputation functions
 
-```{r,idk1, echo=TRUE, fig.width=8, fig.height=8}
+
+
+Functions explained in depth in functions.R document
+
+```{r,idk1, echo=TRUE, loaded functions}
+
+## DO NOT ALTER clust_total TO BE A SET INTEGER; this variable should be dynamic in nature and finds the total number of clusters (cluster total value) that had previously been taken through manually analysing every cluster under different optimisation functions 
+clust_total <- length(cutClustvalues_dynamic)
+saveRDS(clust_total, "clust_total.rds")
+
+# Correlates gene counts within a single cluster and outputs a list of the genes grouped per cluster and their corresponding correlation values
+corrClust <- corr_per_clust(normAggLog, cutClust, clust_total)
+
+# Forms a list containing all GO terms associated with the genes belonging to a particular cluster
+GOperClust <- GO_per_cl(x=GO_test, y=cutClust, clust_total)
+
+# gene pair correlation weights
+edgelist <- edge_list(corrClust=corrAllClusters, clust_total)
 
 # A nested list of gene clusters containing the data generated for cluster analysis. 
-
-clust_total = ###
-
-corr_allClusters <- corr_per_clust(normAggLog, cutClust, clust_total)
-
-GOterms_perCl <- GO_per_cl(x=GO_table,
-    y=cutClust,
-    clust_total = clust_total)
-
-cor_edge_list <- edge_list(corr_allCl=corrAllClusters,
-    clust_total = clust_total)
-
-weightorgGOmatrixwide <- impute(GOterms_perCl= GOterms_perCl,
-    cor_edge_list = cor_edge_list  ,
-    cl_GOall = orgGOmatrixwide, 
-    corr_clAll = corrAllClusters,
-    clust_total = clust_total,
-    thresh = 0.02)
+weightorgGOmatrixwide <- impute(GOperClust, edgelist,cl_GOall = orgGOmatrixwide, corr_clAll = corrClust,
+    clust_total, thresh = )
 
 saveRDS(weightorgGOmatrixwide, "weightorgGOmatrixwide.rds")
 
-# Get the list of GO terms per cluster from the original db (before blinding) to use as a reference for filtering the relevant GO terms per cluster. This also makes sure that dimensions (number of columns) in all of the trials are equal.
-GOtermsperClust <- GO_per_cl_list(weightorgGOmatrixwide, clust_total)
+# Get the list of GO terms per cluster from the org genes (before blinding) to use as a reference for filtering the relevant GO terms per cluster. This also ensures the dimensions (number of columns) in all of the trials are equal.
+GOperClustall <- GO_per_cl_list(weightorgGOmatrixwide, clust_total)
+
 # Save the list of GO terms per cluster
-saveRDS(GOtermsperClust, "GOtermsperClust.rds")
+saveRDS(GOperClustall, "GOperClustall.rds")
 
 ```
 
-### 4. Optimization of parameters
+### 3. Optimization of parameters
 
 ```{r,optimisation}
 
-# Different cluster sizes can produced through passing a list of numbers as denominators of hClust$height  
+# Different cluster sizes can produced through passing a list of numbers as denominators of hClust height
 
 # Determine min-max cut value to get 20 to 2000 total clusters
 clusterVal <- cl_lengthCut(hr=hClust, min=1.297, max=3.378, interval=0.001)
 saveRDS(clusterVal, "clusterVal.rds")
 
 # Number of gene IDs with no GO IDs
-nullOnt <- setdiff(unique(rownames(normAggScale)),unique(GO_table$ensembl_gene_id))
+nullOnt <- setdiff(unique(rownames(normAggLog)),unique(GO_test$ensembl_gene_id))
 length(nullOnt)
+
+# 
 
 ```
 
 
-### 1. Cluster Analysis
+### 3. Cluster Analysis
+
+Analysis stage of individual clusters, 
 
 ```{r, clustering}
 
@@ -103,11 +109,11 @@ length(nullOnt)
 cluster1_list <- names(cutClust[cutClust==1])
 
 # Correlation in Cluster 1  (Function counterpart: corrClust)
-cluster_1 <- normAggScale[rownames(normAggScale) %in% cluster1_list,]
+cluster_1 <- normAggLog[rownames(normAggLog) %in% cluster1_list,]
 corrClust1 <- cor(t(cluster_1))
 
 # GO terms for cluster 1 (Function counterpart: GOperClust)
-cluster1GO <- GO_table[GO_table$ensembl_gene_id %in% cluster1_list,]
+cluster1GO <- GO_test[GO_test$ensembl_gene_id %in% cluster1_list,]
 rownames(cluster1GO) <- cluster1GO[,1] 
 cluster1GO[,1] <- c()
 cluster1GO <- cluster1GO[,which(colSums(cluster1GO) > 0)]
@@ -120,16 +126,17 @@ cluster1GO_list <- rownames(cluster1GO)
 # List of GeneIDs in the cluster not present in the GO list
 diffClust1GO <- setdiff(cluster1_list, cluster1GO_list)
 
-# Use function, wcorr_cluster, to get the weighted values for all blinded genes in cluster 1
-cluster1wGO <- weightcorrClust(cluster1_list, corrClust1, cluster1GO)
+# Use function 'weightcorrClust' to get the weighted values for all blinded genes in cluster 1
+cluster1wGO <- weightcorrClust(cluster1_list, corrClust1, cluster1GO, )
 
 # Convert output into a data frame with columns as GO terms and rows as gene names
 cluster1wGOdf <- as.data.frame(do.call(rbind, cluster1wGO))
-cluster1wGOdf <- cluster1wGOdf[order(rownames(cluster1wGOdf)),]
-cluster1wGOdf <- cluster1wGOdf[,order(colnames(cluster1wGOdf))]
+  cluster1wGOdf <- cluster1wGOdf[order(rownames(cluster1wGOdf)),]
+  cluster1wGOdf <- cluster1wGOdf[,order(colnames(cluster1wGOdf))]
 
 # Check if the GeneIDs with no GO terms have values
 noGOs <- cluster1wGOdf[diffClust1GO,]
+if(noGOs == 0) {stop("GO terms have no values, dataframe not created")}
 
 # set threshold
 Clust1thresh <- 0.02
@@ -144,9 +151,13 @@ input_mat <- rbind(cluster1GO, newRownames)
 input_mat <- input_mat[order(rownames(input_mat)),]
 input_mat <- input_mat[,order(colnames(input_mat))]
 
+
+## CHECK CASES
 # Check if the rownames of the two dfs are the same. Result should be: integer(0)
 which(!rownames(impClust1df) == rownames(input_mat))
 which(!colnames(impClust1df) == colnames(input_mat))
+if(which(!rownames(impClust1df) == rownames(input_mat))> 0) {stop("dataframes not correlated")}
+if(which(!colnames(impClust1df) == colnames(input_mat))> 0) {stop("dataframes not correlated")}
 
 # Comparison between input df and resultant df
 Clust1neg <- impClust1df - input_mat
@@ -155,7 +166,7 @@ which(Clust1neg == -1)
 
 ```
 
-### 2. Visualizations
+### 4. Visualizations
 
 ```{r, vis1, echo=TRUE, fig.width=8, fig.height=8}
 

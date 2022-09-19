@@ -41,9 +41,10 @@ suppressPackageStartupMessages({
 source("functions.R")
 ```
 
-### 1. Download and unzip the Human data 
+### 1. Download and unzip the RNA data 
 
 ```{r, Download Data, echo=TRUE}
+
 # if statement checks if object exists
 if ( !dir.exists("Data")) { dir.create("Data") }
 if (!file.exists("Data/hsapiens_rand_se.tsv.bz2")){
@@ -58,6 +59,7 @@ head(orgData)
 ### 2. Download, read, and unzip the QC data
 
 ```{r, QC Data, echo=TRUE}
+
 if (!file.exists("hsapiens_rand_qc.tsv.bz2")){
     download.file("http://ziemann-lab.net/public/cas/rand/hsapiens_rand_qc.tsv.bz2", 
               destfile = "hsapiens_rand_qc.tsv.bz2")}
@@ -69,35 +71,43 @@ head(qcData)
 ### 3. Filter and quantify databases according to qcSummary = PASS, WARN, or FAIL.  
 
 ```{r, QC Data Summary, echo=TRUE}
-# Count the total number of qcSummary entries for checking
-qcSummary <- qcData[qcData$Description == 'qcSummary',]
-if ( nrow(qcSummary) > 0 ) {  stop("Quality check data not loaded accurately") }
-totalSummary <- nrow(qcSummary)
 
-# Count the total number of databases marked as PASS
+# Count the total number of qcSummary entries [check qc summary description text]
+qcSummary <- qcData[qcData$Description == 'QC_SUMMARY',]
+totalSummary <- nrow(qcSummary)
+if (nrow(qcSummary) == 0) { stop("Quality check data not loaded accurately") }
+
+# Count the total number of databases marked as PASS (to use in training and testing data).
 qcPass <- filter(qcData, grepl("PASS", Details))
 totalPass <- nrow(qcPass)
-# Count the total number of databases marked as WARN
+
+# Count the total number of databases marked as WARN (to remove from training data)
 qcWarn <- filter(qcData, grepl("WARN", Details))
 totalWarn <- nrow(qcWarn)
-# Count the total number of databases marked as FAIL
+
+# Count the total number of databases marked as FAIL (to remove from analysis)
 qcFail <- filter(qcData, grepl("FAIL", Details))
 totalFail <- nrow(qcFail)
-# Summary of counts. Addition of each PASS, WARN, and FAIL counts equals to total_summary.
-qualitySummary <- data.frame(totalPass, totalWarn, totalFail, totalSummary)
-qualitySummary
+
+## QUALITY CHECK:
+# Summary of counts. Addition of each PASS, WARN, and FAIL counts equals to qcSummary.
+qualSummary <- data.frame(totalPass, totalWarn, totalFail, totalSummary)
+qualSummary
+
 ```
 
 ### 4. Select all the databases from the quality control metrics data with qcSummary == 'PASS' 
 
 ```{r, Filter org bulk data, echo=TRUE}
-# Filter all the sample names with qcSummary == 'PASS' from step 3
+
+# Filter all the sample names with qcSummary == 'PASS' from chunk 3
 databasePass <- filter(qcData, grepl("PASS", Details)) 
 # Convert the rows into string and store on a list to use for filtering org data
 databasePassList <- as.character(databasePass$Database)
 str(databasePassList)
 saveRDS(databasePassList, "databasePassList")
-# Filter org data using generated list
+
+# Filter org data to only include PASS samples
 orgPass <- orgData[orgData$V1 %in% databasePassList,] 
 # Convert format from long to wide
 orgPassWide <- orgPass %>% pivot_wider(names_from = "V1", values_from = "V3")
@@ -116,13 +126,17 @@ saveRDS(orgPassWide, "orgPassWide.rds")
 Ensure all chunks have been previously loaded, as srx_agg function requires the function.R source, multiple libraries, and databasePassList. 
 
 ```{r, SRR to SRX Aggregation, echo=TRUE}
+
 # Download and read Metadata summary
 if (!file.exists("hsapiens_metadata.tsv.cut")){
     download.file("http://ziemann-lab.net/public/cas/rand/hsapiens_metadata.tsv.cut", 
               destfile = "hsapiens_metadata.tsv.cut")}
-    
 orgMetadata <- read.csv("hsapiens_metadata.tsv.cut", sep = '\t')
-# Filter metadata to include only "passed" samples
+
+#checks to see if databasePassList correctly saved to prevent memory usage issue during aggregation stages
+if(!exists("databasePassList") ){stop ("databasePassList not loaded, check previous chunk")}
+
+# Filter metadata to include only PASS samples
 orgMetadataPass <- orgMetadata[which(orgMetadata$SRR_accession %in% databasePassList),]
 # Assign column 1 as rownames 
 rownames(orgMetadataPass) <- orgMetadataPass[,1]
@@ -130,49 +144,47 @@ orgMetadataPass <- orgMetadataPass[,-1]
 orgMetadataPass
 saveRDS(orgMetadataPass, "orgMetadataPass.rds")
 
-# Put the filtered org GeneCount data and the filtered metadata dataframes into a list
+# Put the filtered org data (Gene Counts) and the filtered metadata dataframes into a list
 orgCountMetadata <- list(GeneCounts = orgPassWide, MetadataSummary = orgMetadataPass)
-
-# Apply both dataframes to the function
 head(orgCountMetadata)
 
-#checks to see if databasePassList correctly saved to prevent memory usage issue during aggregation stage
-if(!exists("databasePassList") ){stop ("databasePassList not loaded, check previous chunk")}
 
-# Aggregation stage with srx_agg function
+## ------------------ AGGREAGATION
+
+# Aggregate gene counts and metadata with srx_agg function
 agg <- srx_agg(orgCountMetadata)
 
-# Remove genes with zero or more total counts 
+# Remove genes with zero total counts
 length(which(rowSums(agg) == 0))
 no_gene_counts <- names(which(rowSums(agg) == 0))
 aggFilterRows <- agg[which(rowSums(agg) > 0), ]
 agg <- agg[!(rownames(agg) %in% no_gene_counts),]
 
-# Check for samples with zero total counts
-colSums(agg) == 0
-
-# Filtering samples with more than 1 million reads
-aggFilterCols <- agg[, which(colSums(agg) >= 1e6)]
+# Check cases for samples with zero total counts
+length(which(rowSums(agg) == 0))
+if (length(which(rowSums(agg) == 0)) > 0 ) {  stop("Aggregation failure - Zero count detected") }
+length(which(colSums(agg) == 0))
+if (length(which(colSums(agg) == 0)) > 0 ) {  stop("Aggregation failure - Zero count detected") }
 
 # Omit rows and columns with more than zero counts
 dim(agg)
 if ( nrow(agg) == 0 ) { stop("Aggregation failure - Zero count detected") }
 
+# Filtering samples with more than 1 million reads
+aggFilterCols <- agg[, which(colSums(agg) >= 1e6)]
+
 # Save agg object
 saveRDS(agg, "agg.rds")
 
-# Histogram showing samples (columns) counts
-hist(colSums(agg), breaks = 20)
+# Histogram showing filtered samples (columns) counts
+hist(aggFilterCols, breaks = 20)
+
 
 ```
 
 ### 6. Normalisation of Data (with PASS only databases)
 
 ```{r, normalisation, echo=TRUE}
-# Filtering low counts
-# Check if there are genes with no counts (rowSums==0)
-length(which(rowSums(agg) == 0)) # no rowSums = 0
-if (length(which(rowSums(agg) == 0)) > 0 ) {  stop("PASS data not normalised") }
 
 #NORMALISATION FOR COMPOSITION BIAS (TMM normalisation)
 dgeObj <- DGEList(agg)
@@ -182,16 +194,12 @@ normAgg <- cpm(dgeObj)
 
 # Scale after normalisation
 normAggScale <- scale(normAgg)
-
-# Check distributions of samples
-hist(normAggScale, breaks = 10)
-saveRDS(normAggScale,"normAggScale.rds")
+normAggScale
 
 # Get, and convert to log2 counts per million
 normAggLog <- cpm(dgeObj,log=TRUE)
 hist(normAggLog, breaks = 10)
-saveRDS(normAggLog,"normAggLog.rds")
-
+saveRDS(normAggLog,"normAggLog.rds") #
 
 ```
 
@@ -240,18 +248,18 @@ set.seed(42)
 distClust <-as.dist(1-cor(t(normAggScale), method="spearman"))
 hClust <- hclust(distClust , method="complete")
 
-#convert hClust to dataframe
+# Convert hClust to dataframe
 hClust <- as.data.frame(hClust, row.names = "Gene IDs", optional = FALSE,
               col.names = "Runs (Metadata)", fix.empty.names = TRUE,
               stringsAsFactors = default.stringsAsFactors())
-saveRDS(hClust, "hClust")
+saveRDS(hClust, "hClust.rds")
 head(hClust)
 
 # Check the correlation between the distance matrix and the cophenetic distance [test case]
 cophenetic.d = cophenetic(hClust)
 correlate_distClustVcoph <- cor(distClust, cophenetic.d)
 
-#form dendrogram
+# Form dendrogram of heirarchial clustering (hClust) 
 png("Data/dendro_Average.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
   dend <- as.dendrogram(hClust)
   labels_colors(dend) <- "white"
@@ -266,26 +274,24 @@ A specific number of clusters can be set using the cutree function; let k = chos
 
 ```{r, heirarchical1, echo=TRUE}
 
-# 
+# create the number of clusters and cut to size, find lengths. 
 # Using the argument k in cutree is a faster process vs figuring out the cut height
 cutClust <- cutree(hClust, k=200)
+saveRDS(cutClust, "cutClust.rds")
 cutClustlength <- length(unique(cutClust))
-saveRDS(cutClust, "cutClust")
 
 # Cluster size check statement
-cutClustlength
-if (length(cutClustlength ==0 )) {  stop("cutree function could not find appropriate cluster lengths") }
+length(cutClustlength)
+if (length(cutClustlength == 0 )) { stop("cutree function could not find appropriate cluster lengths") }
   
 ```
 
 ### 8. Clustering genes using different cluster sizes 
 
-This functions will will yield a list of genes grouped in cluster sized of 50 to 2000 to be 
+This function will will yield a list of genes grouped in cluster sized of 50 to 2000 to be 
 used in downstream processes.
 
-leave eval=FALSE otherwise chunk requires manual cutHeight addition
-
-```{r, clustering1, eval=FALSE }
+```{r, clustering1, echo=TRUE }
 
 # Different Cluster sizes using the dynamic method, cutreeHybrid from the dynamicTreeCut library
 cutClustvalues_dynamic <- cl_cut_dynamic(hr=hClust, cl=distClust, min=4, max=302, interval=2)
@@ -334,6 +340,7 @@ remove(orgMetadata)
 remove(databasePassList)
 remove(dgeObj)
 remove(distClust)
+remove(normAggScale)
 ```
 
 ### Mem usage

@@ -41,57 +41,58 @@ source("functions.R")
 
 ```{r, load1}
 
-#Download data [temporary - only uncomment if DataPrep Chunk 7b not functioning due to memory issue]
-# if downloading data, need to follow dynamic process from DataPrep (set below)
+## Download data [temporary - only uncomment if DataPrep Chunk 7b not functioning due to memory issue]
+## if downloading data, need to follow dynamic process from DataPrep (set below)
 
-# # if statement checks if object exists
 # if (!file.exists("Data/cutClustvalues")){
-#     download.file("https://ziemann-lab.net/public/ncRNA/cutClustvalues.rds", 
+#     download.file("https://ziemann-lab.net/public/ncRNA/cutClustvalues.rds",
 #               destfile = "Data/cutClustvalues")}
 # cutClustvalues <- fread("Data/cutClustvalues")
 
 
+## Load relevant objects
 
-# Normalised, aggregated, and scaled RNASeq counts - taken from DataPrep
-normAggScale <- readRDS("normAggScale")
-normAggLog <- readRDS("normAggLog")
+# Normalised, aggregated, and scaled RNASeq log2 counts - taken from DataPrep
+normAggLog <- readRDS("normAggLog.rds")
 # Binary dataframe for GO annotations - taken from GOPrep
-GO_table <- readRDS("GO_table")
-# From GO_table, selected randomly as training data - taken from GOPrep
-GO_train <- readRDS("GO_train")
+GO_table <- readRDS("GO_table.rds")
+# From GO_table, selected randomly as 10% training data - taken from GOPrep
+GO_train <- readRDS("GO_train.rds")
 # List of genes grouped in different cluster sizes - taken from DataPrep
-cutClustvalues_dynamic <- readRDS("cutClustvalues_dynamic")
+cutClustvalues_dynamic <- readRDS("cutClustvalues_dynamic.rds")
 
 ```
 
 ### 1. Coarse Sweep for Spearman + complete linkage 
 
-The following code will perform a K-fold validation for the imputation process which uses Spearman method to measure the distance matrix and complete as linkage method during the clustering process. 
+The following code will perform a K-fold validation for the imputation process, using the Spearman method to measure the distance matrix and complete linkage method during the clustering process. 
 
 ```{r, coarsesweep1}
 
-# Coarse sweep of the following parameters: cluster total(taken from cluster cuts and aggregates) and thresholds (0.1 to 0.9, variable). 
-#The length in cl_list is the minimum cluster size used in the dynamic tree cut. These values are saved in the cutClustvalues_dynamic variable. 
-#cluster totals are taken from cutClustvalues_dynamic variable and optimised
+# Coarse sweep of the following parameters: 
+#     (1) cluster total (taken from cluster cuts and aggregates), and;
+#     (2) thresholds (0.1 to 0.9, variable). 
+# The length in cl_list is the minimum cluster size used in the dynamic tree cut. These values are saved in the   
+#     cutClustvalues_dynamic variable. (see functions.R for details)
+# Cluster totals are taken from cutClustvalues_dynamic variable and optimised
 
-#extract out sizes from previous work
+# extract out clusters lengths from cutClustvalues_dynamic 
 cl_list <- names(cutClustvalues_dynamic)
 cl_list <- cl_list[seq(1,length(cl_list),5)]
+if (length(cl_list == 0)) { stop("extraction error, check 'cutClustvalues_dynamic.rds' is loaded") }
 
-if (length(cl_list ==0 ) ) {  stop("extraction error") }
+# THRESHOLDS TO BE DYNAMICALLY OPTIMISED AT A LATER DATE
+# Optimal thresholds (dynamically found from ###)
+thresh <- c(0.1, 0.3, 0.5, 0.6)
 
-thresh_list <- c(0.1, 0.3, 0.5, 0.6)
-
-#sample k-fold validation
+# Sample k-fold Validation
 start <- Sys.time()
 
-sample_kfold <- optimise_impute(cl_list=cl_list,
-  thresh_list=thresh_list, 
-  cuttree_values=cutClustvalues_dynamic,
-  counts=normAggScale,
-  GO_annot=GO_train)
+sample_kfold <- optimise_impute(cl_list, thresh, cutClustvalues_dynamic, normAggLog, GO_train)
 
 end <- Sys.time()
+
+#
 totalTime <- end - start
 totalTime
 
@@ -113,7 +114,7 @@ saveRDS(kfold_dynamic_sum, "kfold_dynamic_sum.rds")
 
 ### 3. Visualizations
 
-```{r, vis1}
+```{r, visualisations_blinded}
 
 # cut tree value vs Total Clusters – line diagram
 cuttree_totals_df <- function(cutClustvalues_dynamic){
@@ -141,6 +142,7 @@ cuttree_totals_df <- function(cutClustvalues_dynamic){
 }
 
 cuttree_totals_df(cutClustvalues_dynamic)
+
 
 # Total genes per cluster  – violin plot
 c_violin <- function(cutClustvalues){
