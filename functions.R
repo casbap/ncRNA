@@ -8,8 +8,8 @@
 # 
 # used in DataPrep (chunk 5)
 
-srx_agg <- function(x,normAggLog="GenenormAggLog") {
-  IDX=which(names(x) %in% "GenenormAggLog")
+srx_agg <- function(x,counts="GeneCounts") {
+  IDX=which(names(x) %in% "GeneCounts")
   mds<-x$MetadataSummary
   n=nrow(x[[IDX]])
   SRX_dat <- vapply(X=unique(mds$SRX_accession) ,function(srx) {
