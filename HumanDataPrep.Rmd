@@ -232,7 +232,7 @@ saveRDS(correlate_melt, "correlate_melt")
 
 #Spearman Correlation of RNASeq Counts
 png("Data/hist_correlation1.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-hist(correlate_melt, breaks = 20, xlab = "Gene Correlation Values", 
+hist(correlate_melt$value, breaks = 20, xlab = "Gene Correlation Values", 
   main = "Spearman Correlation of RNASeq Counts")
 dev.off()
 
