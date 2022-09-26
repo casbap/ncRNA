@@ -253,7 +253,7 @@ hClust <- as.data.frame(hClust, row.names = "Gene IDs", optional = FALSE,
               col.names = "Runs (Metadata)", fix.empty.names = TRUE,
               stringsAsFactors = default.stringsAsFactors())
 saveRDS(hClust, "hClust.rds")
-head(hClust)
+#head(hClust)
 
 # Check the correlation between the distance matrix and the cophenetic distance [test case]
 cophenetic.d = cophenetic(hClust)
@@ -281,8 +281,8 @@ saveRDS(cutClust, "cutClust.rds")
 cutClustlength <- length(unique(cutClust))
 
 # Cluster size check statement
-length(cutClustlength)
-if (length(cutClustlength == 0 )) { stop("cutree function could not find appropriate cluster lengths") }
+cutClustlength
+if (cutClustlength == 0 ) { stop("cutree function could not find appropriate cluster lengths") }
   
 ```
 
