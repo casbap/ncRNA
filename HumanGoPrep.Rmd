@@ -131,9 +131,9 @@ GO_test <- GO_table[blinded_ind,]
 saveRDS(GO_test, "GO_test.rds")
 
 # Associate scaled aggregates found in GO_test matrix - testing data for Imputation
-normAggScale <- readRDS("normAggScale.rds")
-normAggScale_test <- normAggScale[rownames(normAggScale) %in% GO_test$ensembl_gene_id,]
-saveRDS(normAggScale_test, "normAggScale_test.rds")
+normAggLog <- readRDS("normAggLog.rds")
+normAggLog_test <- normAggLog[rownames(normAggLog) %in% GO_test$ensembl_gene_id,]
+saveRDS(normAggLog_test, "normAggLog_test.rds")
 ```
 
 ### 12. Data removal

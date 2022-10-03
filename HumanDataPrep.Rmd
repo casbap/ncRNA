@@ -32,7 +32,6 @@ suppressPackageStartupMessages({
     library(ggplot2)
     library(DESeq2)
     library(dynamicTreeCut)
-    library(biomaRt)
     library(qdapTools)
     library(hrbrthemes)
     library(tibble)
@@ -149,9 +148,9 @@ orgCountMetadata <- list(GeneCounts = orgPassWide, MetadataSummary = orgMetadata
 head(orgCountMetadata)
 
 
-## ------------------ AGGREAGATION
+## ------------------ AGGREGATION
 
-# Aggregate gene counts and metadata with srx_agg function
+# Aggregate gene counts and metadata with srx_agg function (details in functions.R script)
 agg <- srx_agg(orgCountMetadata)
 
 # Remove genes with zero total counts
@@ -160,6 +159,7 @@ no_gene_counts <- names(which(rowSums(agg) == 0))
 aggFilterRows <- agg[which(rowSums(agg) > 0), ]
 agg <- agg[!(rownames(agg) %in% no_gene_counts),]
 
+#CHECK CASES
 # Check cases for samples with zero total counts
 length(which(rowSums(agg) == 0))
 if (length(which(rowSums(agg) == 0)) > 0 ) {  stop("Aggregation failure - Zero count detected") }
@@ -175,9 +175,6 @@ aggFilterCols <- agg[, which(colSums(agg) >= 1e6)]
 
 # Save agg object
 saveRDS(agg, "agg.rds")
-
-# Histogram showing filtered samples (columns) counts
-hist(aggFilterCols, breaks = 20)
 
 
 ```
@@ -208,7 +205,7 @@ saveRDS(normAggLog,"normAggLog.rds") #
 ``` {r, Correlate}
 
 # Correlation Matrix
-correlate <- cor(t(normAggScale), method = "spearman")
+correlate <- cor(t(normAggLog), method = "spearman")
 correlate[upper.tri(correlate,diag=TRUE)] <- NA
 
 #extract values and combine for large matrices
@@ -253,7 +250,7 @@ hClust <- as.data.frame(hClust, row.names = "Gene IDs", optional = FALSE,
               col.names = "Runs (Metadata)", fix.empty.names = TRUE,
               stringsAsFactors = default.stringsAsFactors())
 saveRDS(hClust, "hClust.rds")
-head(hClust)
+#head(hClust)
 
 # Check the correlation between the distance matrix and the cophenetic distance [test case]
 cophenetic.d = cophenetic(hClust)
@@ -281,8 +278,8 @@ saveRDS(cutClust, "cutClust.rds")
 cutClustlength <- length(unique(cutClust))
 
 # Cluster size check statement
-length(cutClustlength)
-if (length(cutClustlength == 0 )) { stop("cutree function could not find appropriate cluster lengths") }
+cutClustlength
+if (cutClustlength == 0 ) { stop("cutree function could not find appropriate cluster lengths") }
   
 ```
 
@@ -340,7 +337,6 @@ remove(orgMetadata)
 remove(databasePassList)
 remove(dgeObj)
 remove(distClust)
-remove(normAggScale)
 ```
 
 ### Mem usage
