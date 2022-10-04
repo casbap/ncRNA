@@ -79,7 +79,7 @@ The following code will perform a K-fold validation for the imputation process, 
 # extract out clusters lengths from cutClustvalues_dynamic 
 cl_list <- names(cutClustvalues_dynamic)
 cl_list <- cl_list[seq(1,length(cl_list),5)]
-if (length(cl_list == 0)) { stop("extraction error, check 'cutClustvalues_dynamic.rds' is loaded") }
+if (length(cl_list) == 0) { stop("extraction error, check 'cutClustvalues_dynamic.rds' is loaded") }
 
 # THRESHOLDS TO BE DYNAMICALLY OPTIMISED AT A LATER DATE
 # Optimal thresholds (dynamically found from ###)
