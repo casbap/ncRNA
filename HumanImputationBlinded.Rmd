@@ -60,6 +60,8 @@ GO_table <- readRDS("GO_table.rds")
 GO_train <- readRDS("GO_train.rds")
 # List of genes grouped in different cluster sizes - taken from DataPrep
 cutClustvalues_dynamic <- readRDS("cutClustvalues_dynamic.rds")
+# cutclust is required later
+cutClust <- readRDS("cutClust.rds")
 
 ```
 
@@ -88,7 +90,8 @@ thresh <- c(0.1, 0.3, 0.5, 0.6)
 # Sample k-fold Validation
 start <- Sys.time()
 
-sample_kfold <- optimise_impute(cl_list, thresh, cutClustvalues_dynamic, normAggLog, GO_train)
+sample_kfold <- optimise_impute(cl_list, thresh, cutClustvalues_dynamic, 
+  normAggLog, GO_train, cutClust)
 
 end <- Sys.time()
 

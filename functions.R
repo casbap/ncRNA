@@ -616,7 +616,8 @@ summary_Csweep <- function(kfold_list){
 #
 # Used in Imputation Blinded (chunk 1) within the sample k_fold stage
 
-optimise_impute <- function(cutClustlength, thresh, cutClustvalues_dynamic, normAggLog, GO_table)
+optimise_impute <- function(cutClustlength, thresh, cutClustvalues_dynamic, 
+  normAggLog, GO_table, cutClust)
   {
   scores <- list()
   
