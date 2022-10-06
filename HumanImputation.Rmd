@@ -35,7 +35,7 @@ source("functions.R")
 
 ```{r, loadrds}
 
-##normAggScale_test <- readRDS("normAggScale_test.rds")
+normAggLog_test <- readRDS("normAggScale_test.rds")
 normAggLog <- readRDS("normAggLog.rds")
 cutClust <- readRDS("cutClust.rds")
 GO_test <- readRDS("GO_test.rds")
@@ -43,11 +43,12 @@ correlate_melt <-  readRDS("correlate_melt.rds")
 hClust <- readRDS("hClust.rds")
 cutClustvalues_dynamic <- readRDS("cutClustvalues_dynamic.rds")
 
+# Threshold list is currently manually set, but will be optimised at a later date
+thresh <- readRDS("thresh.rds")
+
 ```
 
 ### 2. Imputation functions
-
-
 
 Functions explained in depth in functions.R document
 
@@ -58,24 +59,24 @@ clust_total <- length(cutClustvalues_dynamic)
 saveRDS(clust_total, "clust_total.rds")
 
 # Correlates gene counts within a single cluster and outputs a list of the genes grouped per cluster and their corresponding correlation values
-corrClust <- corr_per_clust(normAggLog, cutClust, clust_total)
+corrClust <- corr_per_clust(x=normAggLog, y=cutClust, clust_total=clust_total)
 
 # Forms a list containing all GO terms associated with the genes belonging to a particular cluster
-GOperClust <- GO_per_cl(x=GO_test, y=cutClust, clust_total)
+GOperClust <- GO_per_cl(x=GO_test, y=cutClust, clust_total=clust_total)
 
-# gene pair correlation weights
-edgelist <- edge_list(corrClust=corrAllClusters, clust_total)
+# Gene pair correlation weights
+edgelist <- edge_list(corrClust=corrAllClusters, clust_total=clust_total)
 
 # A nested list of gene clusters containing the data generated for cluster analysis. 
-weightorgGOmatrixwide <- impute(GOperClust, edgelist,cl_GOall = orgGOmatrixwide, corr_clAll = corrClust,
-    clust_total, thresh = )
+# The weight of all clusters (testing data) is formed from the GOperClust object, which is a subset of the orgGOmatrixwide object from HumanGoPrep (chunk 2/11).
 
+#NOTE TO MARK: if this still does not work, I have a janky solution we can use, but it will not be as statistically significant
+weightorgGOmatrixwide <- impute(GOperClust=GOperClust, GO_clall=GO_per_cl_blinded, corr_cl=corrClust, 
+                         clust_total=clust_total, cor_edge_list=edgeList, thresh=thresh)
 saveRDS(weightorgGOmatrixwide, "weightorgGOmatrixwide.rds")
 
 # Get the list of GO terms per cluster from the org genes (before blinding) to use as a reference for filtering the relevant GO terms per cluster. This also ensures the dimensions (number of columns) in all of the trials are equal.
-GOperClustall <- GO_per_cl_list(weightorgGOmatrixwide, clust_total)
-
-# Save the list of GO terms per cluster
+GOperClustall <- GO_per_cl_list(x=weightorgGOmatrixwide, clust_total=clust_total)
 saveRDS(GOperClustall, "GOperClustall.rds")
 
 ```
@@ -84,24 +85,16 @@ saveRDS(GOperClustall, "GOperClustall.rds")
 
 ```{r,optimisation}
 
-# Different cluster sizes can produced through passing a list of numbers as denominators of hClust height
-
-# Determine min-max cut value to get 20 to 2000 total clusters
-clusterVal <- cl_lengthCut(hr=hClust, min=1.297, max=3.378, interval=0.001)
-saveRDS(clusterVal, "clusterVal.rds")
-
-# Number of gene IDs with no GO IDs
-nullOnt <- setdiff(unique(rownames(normAggLog)),unique(GO_test$ensembl_gene_id))
-length(nullOnt)
-
-# 
+# Optimisation of thresholds and clusters to use, finding the ROC of each cluster prior to cluster analysis.
+optimal_stats <- stats_cl(imputed_df=weightorgGOmatrixwide, clust_total=clust_total)
+saveRDS(optimal_stats, "optimal_stats.rds")
 
 ```
 
 
 ### 3. Cluster Analysis
 
-Analysis stage of individual clusters, 
+Analysis stage of individual clusters
 
 ```{r, clustering}
 

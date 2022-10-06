@@ -104,7 +104,7 @@ databasePass <- filter(qcData, grepl("PASS", Details))
 # Convert the rows into string and store on a list to use for filtering org data
 databasePassList <- as.character(databasePass$Database)
 str(databasePassList)
-saveRDS(databasePassList, "databasePassList")
+saveRDS(databasePassList, "databasePassList.rds")
 
 # Filter org data to only include PASS samples
 orgPass <- orgData[orgData$V1 %in% databasePassList,] 
@@ -225,7 +225,7 @@ if(nrow(correlate)>30000) {
 length(which(correlate_melt$value ==0 )) # no zero values
 if (length(which(correlate_melt$value ==0 )) > 0 ) {  stop("large matrix combination error") }
 head(correlate_melt)
-saveRDS(correlate_melt, "correlate_melt")
+saveRDS(correlate_melt, "correlate_melt.rds")
 
 #Spearman Correlation of RNASeq Counts
 png("Data/hist_correlation1.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)

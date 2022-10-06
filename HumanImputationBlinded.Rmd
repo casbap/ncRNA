@@ -54,12 +54,11 @@ source("functions.R")
 
 # Normalised, aggregated, and scaled RNASeq log2 counts - taken from DataPrep
 normAggLog <- readRDS("normAggLog.rds")
-# Binary dataframe for GO annotations - taken from GOPrep
-GO_table <- readRDS("GO_table.rds")
 # From GO_table, selected randomly as 10% training data - taken from GOPrep
 GO_train <- readRDS("GO_train.rds")
 # List of genes grouped in different cluster sizes - taken from DataPrep
 cutClustvalues_dynamic <- readRDS("cutClustvalues_dynamic.rds")
+cutClust <- readRDS("cutClust.rds")
 
 ```
 
@@ -76,19 +75,20 @@ The following code will perform a K-fold validation for the imputation process, 
 #     cutClustvalues_dynamic variable. (see functions.R for details)
 # Cluster totals are taken from cutClustvalues_dynamic variable and optimised
 
-# extract out clusters lengths from cutClustvalues_dynamic 
-cl_list <- names(cutClustvalues_dynamic)
+# extract out clusters lengths from cutClust
+cl_list <- length(unique(cutClust))
 cl_list <- cl_list[seq(1,length(cl_list),5)]
 if (length(cl_list == 0)) { stop("extraction error, check 'cutClustvalues_dynamic.rds' is loaded") }
 
 # THRESHOLDS TO BE DYNAMICALLY OPTIMISED AT A LATER DATE
 # Optimal thresholds (dynamically found from ###)
 thresh <- c(0.1, 0.3, 0.5, 0.6)
+saveRDS(thresh, "thresh.rds")
 
 # Sample k-fold Validation
 start <- Sys.time()
 
-sample_kfold <- optimise_impute(cl_list, thresh, cutClustvalues_dynamic, normAggLog, GO_train)
+sample_kfold <- optimise_impute(cl_list=cl_list, thresh=thresh, cutClustvalues_dynamic=cutClustvalues_dynamic, normAggLog=normAggLog, GO_train=GO_train)
 
 end <- Sys.time()
 
@@ -96,7 +96,7 @@ end <- Sys.time()
 totalTime <- end - start
 totalTime
 
-saveRDS(sample_kfold, "kfold_dynamic_all.rds")
+saveRDS(sample_kfold, "kfold_all.rds")
 
 ```
 
@@ -106,9 +106,9 @@ saveRDS(sample_kfold, "kfold_dynamic_all.rds")
 
 dat_list <- lapply(sample_kfold, function(x) x[names(x)!="Index_folds"])
 
-# List the all the mean predicton scores for each parameter 
-kfold_dynamic_sum <- summary_Csweep(dat_list)
-saveRDS(kfold_dynamic_sum, "kfold_dynamic_sum.rds")
+# List the all the mean prediction scores for each parameter 
+kfold_summary <- summary_Csweep(dat_list)
+saveRDS(kfold_dynamic_sum, "kfold_summary.rds")
 
 ```
 
@@ -145,7 +145,7 @@ cuttree_totals_df(cutClustvalues_dynamic)
 
 
 # Total genes per cluster  – violin plot
-c_violin <- function(cutClustvalues){
+c_violin <- function(cutClustvalues_dynamic){
 
   clTotals <- do.call(rbind.data.frame, sapply(cutClustvalues_dynamic, "[[", 3))
   clTotals$ClusterSize <- as.factor(as.numeric(str_extract_all(rownames(clTotals), "^[:digit:]*(?=.)")))
@@ -187,7 +187,7 @@ c_violin <- function(cutClustvalues){
   dev.off()
 }
 
-c_violin(cutClustvalues)
+c_violin(cutClustvalues_dynamic)
 
 
 ```

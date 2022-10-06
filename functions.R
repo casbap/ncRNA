@@ -105,7 +105,7 @@ corr_per_clust <- function(x, y, clust_total){
   corr_cl <- list()
   for (i in 1:clust_total){
     clusterX <- y[y$ClusterNumber == i,]
-    cluster_list <- as.list(clusterX$ensembl_gene_id)
+    cluster_list <- as.list(clusterX$GeneID)
     cluster <- x[rownames(x) %in% cluster_list,]
     corr_result <- cor(t(cluster))
     corr_cl[[paste0("Cluster", i)]] <- corr_result
@@ -180,7 +180,7 @@ GO_per_cl_list <- function(x,clust_total){
 #
 # Used in to modify the 'impute' function and for cross validation (cross_val) process
 
-GO_per_cl_blinded <- function(x,y,GO_per_cl_list,clust_total){
+GO_per_cl_blinded <- function(x,y,GO_per_cutClustlength,clust_total){
   GO_cl <- list()
   for (i in 1:length(GO_per_cutClustlength)){
     clusterX <- y[y$ClusterNumber == i,]
@@ -287,7 +287,7 @@ weightcorrClust <- function(gene_list, edgelist, GO_cl, thresh){
 #      nested list of gene clusters containing the data generated for cluster analysis (weight)
 # Inputs:
 #      GOperClust = GO terms per cluster from GO_per_cl
-#      GO_clall = GO terms per cluster from GO_per_cl_blinded ()
+#      GO_clall = GO terms per cluster from 'GO_per_cl_blinded' function
 #      corrClust = correlation values grouped by cluster
 #      clust_total = total number of clusters (derived from cutClustvalues_dynamic)
 #      cor_edge_list = an edge list (from igraph Library) from the correlation 
@@ -296,8 +296,7 @@ weightcorrClust <- function(gene_list, edgelist, GO_cl, thresh){
 #
 # Used in Imputation (chunk 2) 
 
-impute <- function (GOperClust, GO_clall=GO_blindedCl, corrClust, 
-                    clust_total, cor_edge_list, thresh){
+impute <- function (GOperClust, GO_clall, corrClust, clust_total, cor_edge_list, thresh){
   wGO_list <- list()
   
   for (i in 1:clust_total){
@@ -329,7 +328,7 @@ impute <- function (GOperClust, GO_clall=GO_blindedCl, corrClust,
     GO_cl <- GO_cl[order(rownames(GO_cl)),]
     GO_cl <- GO_cl[,order(colnames(GO_cl))]
     
-    # Do the same process above for the orginal annotation matrix to use for model validation
+    # Do the same process above for the original annotation matrix to use for model validation
     diff_go_genes2 <- setdiff(gene_list,rownames(GO_cl_orig))
     # Check and add non-annotated genes
     if(length(diff_go_genes2) > 0) {
@@ -550,20 +549,20 @@ cross_val <- function(n, GO_table, cutClust, GOperClust,
 # Outputs:
 #      data frame of the averaged value of a specific measure of performance from all cross validation folds
 # Inputs:
-#      kfold_list = data frame containing all the measures of performance for each fold (from )
+#      kfold_all = a data frame containing all the measures of performance for each fold (from 'optimise_impute' function)
 #      stat_type =  a number indicating the measure of performance to be averaged from 1 to 10 in the ff order: 
 #                   Total Positive (TP), Total Negative (TN), False Positive (FP), False Negative (FN), 
 #                   Sensitivity (TPR), Specificity (TNR), Precision (PPV), and F1 Score (F1)
 
-mean_Csweep <- function(kfold_list, stat_type) {
+mean_Csweep <- function(kfold_all, stat_type) {
   mean_df <- data.frame()
   
-  mean_df <- do.call(rbind.data.frame, lapply(kfold_list[[1]], "[", stat_type))
-  colnames(mean_df)[1] <- names(kfold_list[1])
+  mean_df <- do.call(rbind.data.frame, lapply(kfold_all[[1]], "[", stat_type))
+  colnames(mean_df)[1] <- names(kfold_all[1])
   
-  for (i in 2:length(kfold_list)){
-    col_name <- names(kfold_list[i])
-    mean_df[col_name] <- do.call(rbind.data.frame, lapply(kfold_list[[i]], "[", stat_type))
+  for (i in 2:length(kfold_all)){
+    col_name <- names(kfold_all[i])
+    mean_df[col_name] <- do.call(rbind.data.frame, lapply(kfold_all[[i]], "[", stat_type))
   }
   
   Mean <- colMeans(mean_df)
@@ -579,22 +578,22 @@ mean_Csweep <- function(kfold_list, stat_type) {
 # Outputs:
 #      data frame of the averaged value of all measures of performances for all folds from stats_all()
 # Inputs:
-#      kfold_list = a data frame containing all the measures of performance for each fold. See stats_all()
+#      kfold_all = a data frame containing all the measures of performance for each fold (from 'optimise_impute' function)
 #
 # Used in ImputationBlinded (Chunk 2) to solve for the mean prediction scores for each parameter 
 
-summary_Csweep <- function(kfold_list){
+summary_Csweep <- function(kfold_all){
   summary_df <- data.frame()
-  summary <- mean_Csweep(kfold_list, stat_type=6)
-  row_name <- names(kfold_list[[1]][[1]][6])
+  summary <- mean_Csweep(kfold_all, stat_type=6)
+  row_name <- names(kfold_all[[1]][[1]][6])
   summary_df <- summary[11,]
   rownames(summary_df)[rownames(summary_df) == "Mean"] <- row_name
   
-  stat_type_list <- c(7:length(kfold_list[[1]][[1]]))
+  stat_type_list <- c(7:length(kfold_all[[1]][[1]]))
   
   for (i in stat_type_list){
-    summary <- mean_Csweep(kfold_list, stat_type=i)
-    row_name <- names(kfold_list[[1]][[1]][i])
+    summary <- mean_Csweep(kfold_all, stat_type=i)
+    row_name <- names(kfold_all[[1]][[1]][i])
     summary_df[nrow(summary_df)+1,] <- summary[11,]
     rownames(summary_df)[rownames(summary_df) == "Mean"] <- row_name
   }
@@ -608,35 +607,35 @@ summary_Csweep <- function(kfold_list){
 #      list of prediction scores from a 10-fold validation process. Scores are grouped by a parameter pair
 #      consisting of a total cluster and a threshold value. Each threshold value will be applied to each total cluster value
 # Inputs:
-#      cutClustlength = a list the target total clusters (ex: c(20,100,15000)) (extracted lengths from cutClust)
+#      cutClust = a list of the total clusters (extracted lengths from cutClust) that forms cl_list (a list of unique clusters)
 #      thresh = a numerical list denoting the target threshold value from 0 to 1
 #      cutClustvalues_dynamic = the output of the cl_cut_dynamic() function which gives a table of GeneIDs assigned to clusters
 #      normAggLog = normalized gene normAggLog from RNA seq
 #      GO_table = the Gene Onltology matrix for all GeneIDs
-#
+#      
 # Used in Imputation Blinded (chunk 1) within the sample k_fold stage
 
-optimise_impute <- function(cutClustlength, thresh, cutClustvalues_dynamic, normAggLog, GO_table)
+optimise_impute <- function(cl_list, thresh, cutClustvalues_dynamic, normAggLog, GO_table)
   {
   scores <- list()
   
-  for (clust_total in cutClustlength){
-    print(clust_total)
-    for (thresh in thresh){
-      print(thresh)
-      cl_tot <- as.character(clust_total)
+  for (i in cl_list){
+    print(i)
+    for (j in thresh){
+      print(j)
+      cl_tot <- as.character(i)
       cl <- cutClustvalues_dynamic[[cl_tot]][["GeneID_assignments"]]
       
-      corrClust <- corr_per_clust(normAggLog, cutClust, clust_total)
+      corrClust <- corr_per_clust(normAggLog, cl, i)
       # For faster runtime, set cluster 2 to 0
       corrClust[2] <- 0
       
-      GOperClust <- GO_per_cl(GO_table, cutClust, clust_total)
-      GOperClustall <- GO_per_cutClustlength(GOperClust, clust_total)
+      GOperClust <- GO_per_cl(GO_table, cl, i)
+      GOperClustall <- GO_per_cl_list(GOperClust, i)
       
-      sc <- cross_val(n=10, GO_table, cutClust=cl, GOperClust, GOperClustall, corrClust, clust_total, thresh)
+      sc <- cross_val(n=10, GO_table=GO_table, cutClust=cl, GOperClust=GOperClust, GOperClustall=GOperClustall, corrClust=corrClust, clust_total=i, thresh=j)
       
-      scores[[paste0(clust_total, "_", thresh)]] <- sc
+      scores[[paste0(i, "_", j)]] <- sc
     }
   }
   return(scores)

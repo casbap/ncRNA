@@ -41,14 +41,14 @@ suppressPackageStartupMessages({
 source("functions.R")
 ```
 
-### 1.//10. Load 
+### 1.//10. Load data 
 
 Gene ontologies downloaded from Ensembl BioMart with biomaRt package.
 
 ```{r, gene_ontol1}
 
-# load gene ontologies from Ensembl. with BioMart package and form matrix
-# If Ensembl. unresponsive due to remote connection error, mirror databases will be read.
+# load gene ontologies from Ensembl. with BiomaRt package and form matrix
+# If Ensembl. is unresponsive due to remote connection error, mirror databases will be read.
 # If no database is accessible, attempt in 24 hours.
 ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
 orgGOlong <- getBM(
@@ -73,6 +73,7 @@ orgGOmatrixwide <- cbind(orgGOlong[1], mtabulate(as.data.frame(t(orgGOlong[-1]))
 #aggregate to reduce database size
 orgGOmatrixwide <- aggregate(. ~ ensembl_gene_id,orgGOmatrixwide,sum)
 saveRDS(orgGOmatrixwide, "orgGOmatrixwide.rds")
+
 
 #AGGREGATION OF ONTOLOGIES
 
@@ -102,7 +103,7 @@ saveRDS(GO_table, "GO_table.rds")
 
 ```
 
-### 11. Blind GO Terms (90-10 split)
+### 3.//12. Blind GO Terms (90-10 split)
 
 10 per cent of GeneIDs will have zero Gene Ontology Annotations. This will serve as the training data and analysed in ImputationBlinded.
 After the model has been optimised, these IDs will be unblinded as the testing data.
@@ -136,7 +137,7 @@ normAggLog_test <- normAggLog[rownames(normAggLog) %in% GO_test$ensembl_gene_id,
 saveRDS(normAggLog_test, "normAggLog_test.rds")
 ```
 
-### 12. Data removal
+### 4.//13. Data removal
 
 ```{r, data_removal2, echo=FALSE}
 remove(orgData)
