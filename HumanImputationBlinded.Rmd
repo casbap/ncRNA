@@ -58,6 +58,10 @@ normAggLog <- readRDS("normAggLog.rds")
 GO_train <- readRDS("GO_train.rds")
 # List of genes grouped in different cluster sizes - taken from DataPrep
 cutClustvalues_dynamic <- readRDS("cutClustvalues_dynamic.rds")
+<<<<<<< HEAD
+=======
+# cutclust is required later
+>>>>>>> 1669f51ae3327b34d35b9bf9a43d20f8f7a9d639
 cutClust <- readRDS("cutClust.rds")
 
 ```
@@ -78,7 +82,7 @@ The following code will perform a K-fold validation for the imputation process, 
 # extract out clusters lengths from cutClust
 cl_list <- length(unique(cutClust))
 cl_list <- cl_list[seq(1,length(cl_list),5)]
-if (length(cl_list == 0)) { stop("extraction error, check 'cutClustvalues_dynamic.rds' is loaded") }
+if (length(cl_list) == 0) { stop("extraction error, check 'cutClustvalues_dynamic.rds' is loaded") }
 
 # THRESHOLDS TO BE DYNAMICALLY OPTIMISED AT A LATER DATE
 # Optimal thresholds (dynamically found from ###)

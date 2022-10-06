@@ -8,7 +8,7 @@
 # 
 # used in DataPrep (chunk 5)
 
-srx_agg <- function(x,counts="GeneCounts") {
+srx_agg <- function(x,counts="GeneCounts"){
   IDX=which(names(x) %in% "GeneCounts")
   mds<-x$MetadataSummary
   n=nrow(x[[IDX]])
