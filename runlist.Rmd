@@ -1,0 +1,32 @@
+---
+title: "runlist"
+author: "Cas Baptist"
+date: "2022-09-21"
+output: html_document
+---
+
+## Downstream code run
+
+```{r, runorder}
+
+rmarkdown::render("HumanDataPrep.Rmd")
+rmarkdown::render("HumanGoPrep.Rmd")
+rmarkdown::render("HumanImputationBlinded.Rmd")
+rmarkdown::render("HumanImputation.Rmd")
+rmarkdown:render("Visualisations.Rmd") #visualisations script to come
+
+```
+
+### Mem usage
+
+```{r,memusage}
+sort( sapply( ls() , function(x) { object.size( get( x ) ) }  )  )
+```
+
+### Session Information 
+
+```{r Session Info, echo=FALSE}
+
+sessionInfo()
+
+```
