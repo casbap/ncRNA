@@ -35,8 +35,8 @@ source("functions.R")
 
 ```{r, loadrds}
 
-normAggLog_test <- readRDS("normAggScale_test.rds")
-normAggLog <- readRDS("normAggLog.rds")
+normAggLog_test_test <- readRDS("normAggScale_test.rds")
+normAggLog_test <- readRDS("normAggLog_test.rds")
 cutClust <- readRDS("cutClust.rds")
 GO_test <- readRDS("GO_test.rds")
 correlate_melt <-  readRDS("correlate_melt.rds")
@@ -59,13 +59,13 @@ clust_total <- length(cutClustvalues_dynamic)
 saveRDS(clust_total, "clust_total.rds")
 
 # Correlates gene counts within a single cluster and outputs a list of the genes grouped per cluster and their corresponding correlation values
-corrClust <- corr_per_clust(x=normAggLog, y=cutClust, clust_total=clust_total)
+corrClust <- corr_per_clust(x=normAggLog_test, y=cutClust, clust_total=clust_total)
 
 # Forms a list containing all GO terms associated with the genes belonging to a particular cluster
 GOperClust <- GO_per_cl(x=GO_test, y=cutClust, clust_total=clust_total)
 
 # Gene pair correlation weights
-edgelist <- edge_list(corrClust=corrAllClusters, clust_total=clust_total)
+edgelist <- edge_list(corrClust=corrClust, clust_total=clust_total)
 
 # A nested list of gene clusters containing the data generated for cluster analysis. 
 # The weight of all clusters (testing data) is formed from the GOperClust object, which is a subset of the orgGOmatrixwide object from HumanGoPrep (chunk 2/11).
@@ -88,6 +88,7 @@ saveRDS(GOperClustall, "GOperClustall.rds")
 # Optimisation of thresholds and clusters to use, finding the ROC of each cluster prior to cluster analysis.
 optimal_stats <- stats_cl(imputed_df=weightorgGOmatrixwide, clust_total=clust_total)
 saveRDS(optimal_stats, "optimal_stats.rds")
+optimal_stats
 
 ```
 
@@ -102,7 +103,7 @@ Analysis stage of individual clusters
 cluster1_list <- names(cutClust[cutClust==1])
 
 # Correlation in Cluster 1  (Function counterpart: corrClust)
-cluster_1 <- normAggLog[rownames(normAggLog) %in% cluster1_list,]
+cluster_1 <- normAggLog_test[rownames(normAggLog_test) %in% cluster1_list,]
 corrClust1 <- cor(t(cluster_1))
 
 # GO terms for cluster 1 (Function counterpart: GOperClust)

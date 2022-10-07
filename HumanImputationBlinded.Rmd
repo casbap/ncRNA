@@ -58,10 +58,7 @@ normAggLog <- readRDS("normAggLog.rds")
 GO_train <- readRDS("GO_train.rds")
 # List of genes grouped in different cluster sizes - taken from DataPrep
 cutClustvalues_dynamic <- readRDS("cutClustvalues_dynamic.rds")
-<<<<<<< HEAD
-=======
 # cutclust is required later
->>>>>>> 1669f51ae3327b34d35b9bf9a43d20f8f7a9d639
 cutClust <- readRDS("cutClust.rds")
 
 ```
