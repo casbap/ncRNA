@@ -246,9 +246,11 @@ distClust <-as.dist(1-cor(t(normAggScale), method="spearman"))
 hClust <- hclust(distClust , method="complete")
 
 # Convert hClust to dataframe
-hClust <- as.data.frame(hClust, row.names = "Gene IDs", optional = FALSE,
-              col.names = "Runs (Metadata)", fix.empty.names = TRUE,
-              stringsAsFactors = default.stringsAsFactors())
+#hClust <- as.data.frame(hClust, row.names = "Gene IDs", optional = FALSE,
+#              col.names = "Runs (Metadata)", fix.empty.names = TRUE,
+#              stringsAsFactors = default.stringsAsFactors())
+
+
 saveRDS(hClust, "hClust.rds")
 #head(hClust)
 
