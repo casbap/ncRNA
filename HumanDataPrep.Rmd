@@ -261,7 +261,6 @@ correlate_distClustVcoph <- cor(distClust, cophenetic.d)
 # Form dendrogram of heirarchial clustering (hClust) 
 png("Data/dendro_Average.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
   dend <- as.dendrogram(hClust)
-  labels_colors(dend) <- "white"
   plot(dend, main = paste0("Complete Method: Corr = ", signif(correlate_distClustVcoph)))
 print(dend)
 dev.off()
@@ -296,49 +295,6 @@ used in downstream processes.
 cutClustvalues_dynamic <- cl_cut_dynamic(hr=hClust, cl=distClust, min=4, max=302, interval=2)
 saveRDS(cutClustvalues_dynamic, "cutClustvalues_dynamic.rds")
 
-```
-
-### 9. Heatmaps for the clusters
-
-```{r, heatmaps1}
-
-# Visualisation parameters and colouring
-if (!exists("P100")){
-  P100 <- createPalette(100,  c("#yellow", "#orange", "#red"))}
-clusterCols <- P100[1:cutClustvalues_dynamic]
-colfunc <- colorRampPalette(c("darkgoldenrod2","darkorange2","darkred"))
-
-# Heatmaps 
-png("Data/normalised_clusters.png", width = 5*300, height = 5*300, res = 300, pointsize = 8)
-cutClusterSideBar <- clusterCols[cutClustvalues_dynamic[["Cluster Values"]]]
-heatmap(correlate_melt, main="Gene Correlation (TMM, Spearman)",  Rowv=as.dendrogram(hClust),
-         dendrogram="both", scale="col", col = colfunc(25), trace="none",
-         RowSideColors= cutClustusterSideBar, margins = c(5,5))
-
-dev.off()
-
-```
-
-### Data Removal
-
-Removes data functions to improve memory storage for imputation stages
-
-```{r, data_removal, echo=FALSE}
-remove(cophenetic.d)
-remove(correlate_distClustVcoph)
-remove(dend)
-remove(orgPass)
-remove(databasePass)
-remove(qcSummary)
-remove(totalSummary)
-remove(qcWarn)
-remove(totalWarn)
-remove(qcFail)
-remove(totalFail)
-remove(orgMetadata)
-remove(databasePassList)
-remove(dgeObj)
-remove(distClust)
 ```
 
 ### Mem usage
