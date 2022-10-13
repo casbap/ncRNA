@@ -89,7 +89,9 @@ saveRDS(thresh, "thresh.rds")
 # Sample k-fold Validation
 start <- Sys.time()
 
-sample_kfold <- optimise_impute(cl_list=cl_list, thresh=thresh, cutClustvalues_dynamic=cutClustvalues_dynamic, normAggLog=normAggLog, GO_train=GO_train)
+sample_kfold <- optimise_impute(cl_list=cl_list, thresh=thresh, 
+  cutClustvalues_dynamic=cutClustvalues_dynamic, normAggLog=normAggLog, 
+  GO_table=GO_train)
 
 end <- Sys.time()
 
